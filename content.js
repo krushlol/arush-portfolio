@@ -19,7 +19,7 @@ window.CONTENT = {
   settleIntro: "Pick anything to jump straight to it.",
 
   about: {
-    bio: "I'm Arush, a senior at Irvington High in Fremont. I like figuring out how things work, then building them myself. I've hand-built two PCs, one of them for my mom, and designed and shipped CarAdvisor, a full-stack car research site with an AI assistant, 172 commits and counting. When something breaks, I want to know why. Away from the screen I play drums, basketball, ping pong and tennis.",
+    bio: "I'm Arush, a senior at Irvington High in Fremont, and I learn by building. I like to take a system apart until I understand it, then make something of my own. That curiosity has led me to hand-build two PCs, one for my mom, and to design and ship CarAdvisor, a full-stack car research platform with an AI assistant that I've refined across 172 commits. When I'm not at a keyboard, I'm behind a drum kit or on the court playing basketball, ping pong or tennis.",
     facts: [
       { k: "Age", v: "17" },
       { k: "School", v: "Irvington High · Class of 2027" },
