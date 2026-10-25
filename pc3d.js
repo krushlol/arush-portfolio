@@ -735,7 +735,7 @@ function buildScene(wrap, build, n) {
   const mobile = innerWidth < 768;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 1.75));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = light ? 0.9 : 1.15;
   renderer.shadowMap.enabled = !mobile;
@@ -900,7 +900,7 @@ function buildScene(wrap, build, n) {
   const key = new THREE.DirectionalLight(0xfff1e2, 2.4);
   key.position.set(45, 85, 70);
   key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, { left: -50, right: 50, top: 65, bottom: -15, near: 10, far: 240 });
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.04;
@@ -1091,7 +1091,7 @@ function buildScene(wrap, build, n) {
     if (visible && !reduce) raf = requestAnimationFrame(frame);
   }
   const kick = () => {
-    if (!raf) {
+    if (!raf && wrap.classList.contains("ready")) {
       last = performance.now();
       raf = requestAnimationFrame(frame);
     }
@@ -1125,7 +1125,14 @@ function buildScene(wrap, build, n) {
   });
   asm.addEventListener("pointerleave", () => (mx = my = 0));
   resize();
-  wrap.classList.add("ready");
+  // Compile every shader up front (in parallel where supported) so the first frame doesn't hitch
+  apply(1);
+  placeCamera(0, 0, 0);
+  return renderer.compileAsync(scene, camera).catch(() => {}).then(() => {
+    apply(reduce ? 1 : window.PC_PROGRESS?.[n] ?? 0);
+    wrap.classList.add("ready");
+    kick();
+  });
 }
 
 function hasWebGL() {
@@ -1138,13 +1145,23 @@ function hasWebGL() {
 }
 
 if (hasWebGL()) {
-  // Wait for fonts so the canvas-drawn labels use Space Grotesk / Inter
-  document.fonts.ready.then(() =>
-    document.querySelectorAll(".rig-wrap").forEach((wrap) => {
-      const n = +wrap.querySelector(".rig3d").dataset.build;
-      buildScene(wrap, C.pcBuilds[n], n);
-    })
+  // Build each scene only when it is about to scroll into view, one at a time,
+  // after the fonts are ready so the canvas-drawn labels use Space Grotesk / Inter
+  const pending = new Set(document.querySelectorAll(".rig-wrap"));
+  let queue = Promise.resolve();
+  const io = new IntersectionObserver(
+    (entries) =>
+      entries.forEach((e) => {
+        if (!e.isIntersecting || !pending.has(e.target)) return;
+        pending.delete(e.target);
+        io.unobserve(e.target);
+        const wrap = e.target;
+        const n = +wrap.querySelector(".rig3d").dataset.build;
+        queue = queue.then(() => document.fonts.ready).then(() => buildScene(wrap, C.pcBuilds[n], n));
+      }),
+    { rootMargin: "150% 0px" }
   );
+  pending.forEach((w) => io.observe(w));
 } else {
   document.querySelectorAll(".rig-wrap").forEach((w) => w.classList.add("no-webgl"));
 }

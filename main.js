@@ -69,7 +69,7 @@
           !d.video
             ? `<div class="play" aria-label="Add a video"></div>`
             : /\.(mp4|webm|mov)$/i.test(d.video)
-            ? `<video src="${esc(d.video)}" poster="${esc(d.poster || "")}" controls playsinline preload="metadata"></video>`
+            ? `<video src="${esc(d.video)}" poster="${esc(d.poster || "")}" controls playsinline preload="none"></video>`
             : `<iframe src="${esc(d.video)}" title="Drumming video" allowfullscreen loading="lazy"></iframe>`
         }
       </div>
@@ -260,6 +260,10 @@
 
   gsap.ticker.add(render);
   render();
+
+  // Fetch the 3D builds only after the page has loaded and the browser is idle
+  const load3d = () => import("./pc3d.js");
+  addEventListener("load", () => ("requestIdleCallback" in window ? requestIdleCallback(load3d, { timeout: 2500 }) : setTimeout(load3d, 1200)));
 
   // Anchor links go through Lenis so the scroll stays smooth
   document.addEventListener("click", (e) => {
