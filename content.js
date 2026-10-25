@@ -19,41 +19,16 @@ window.CONTENT = {
   settleIntro: "Pick anything to jump straight to it.",
 
   about: {
-    // Add photo: "assets/me.jpg" to swap the monogram for a real picture
-    photo: "",
-    roles: ["Builder", "Designer", "Drummer"],
-    headline: "I'd rather build it than buy it.",
-    bio: "I'm Arush, a 17-year-old senior at Irvington High in Fremont. I've hand-built two PCs from the ground up (one of them for my mom), designed and shipped CarAdvisor, a full-stack car research site with AI built in, and I record drum covers on my Mapex Venus kit. If it's broken, I want to fix it. If it doesn't exist yet, I want to make it.",
-    meta: ["Fremont, CA", "Irvington High · Class of 2027"],
-    stats: [
-      { v: 172, k: "commits shipped on CarAdvisor" },
-      { v: 2, k: "PCs built by hand" },
-      { v: 1, k: "full-stack site live" },
-      { v: 17, k: "years old" },
-    ],
-    // Shown as a typed-out code card
-    code: {
-      school: "Irvington High · Class of 2027",
-      builds: ["Main Rig", "Mom's Build"],
-      shipped: ["caradvisorusa.com"],
-      stack: ["Next.js", "TypeScript", "Supabase", "Prisma", "Tailwind", "Groq AI"],
-      plays: ["drums", "basketball", "ping pong", "tennis"],
-    },
-    // Real problems from CarAdvisor's commit history
-    solved: [
-      { problem: "The AI chat could stall forever on some messages.", fix: "Added an 8-second stream timeout and handled off-topic and filtered prompts, so the assistant always answers." },
-      { problem: "Logging in didn't take effect until a second refresh.", fix: "Set the session cookie on the redirect response and moved the OAuth callback to the Edge runtime. Login is instant now." },
-      { problem: "Google Search Console flagged structured-data errors.", fix: "Fixed the schema markup and added Vehicle schema, a sitemap, robots.txt and llms.txt so search engines and AI answer engines can read the site." },
-      { problem: "Reddit owner discussions came from a third-party mirror.", fix: "Moved them onto Reddit's official API." },
-      { problem: "Real users left feedback.", fix: "Ran an audit of it and shipped 7 improvements." },
-    ],
-    toolkit: [
-      { group: "Hardware", items: ["PC building", "Part selection", "Cable management", "Troubleshooting"] },
-      { group: "Web", items: ["Next.js", "TypeScript", "Supabase", "Prisma", "Tailwind", "Groq AI", "SEO / schema.org"] },
-      { group: "Music", items: ["Drums", "Covers", "Mapex Venus"] },
+    bio: "I'm Arush, a senior at Irvington High in Fremont. I like figuring out how things work, then building them myself. I've hand-built two PCs, one of them for my mom, and designed and shipped CarAdvisor, a full-stack car research site with an AI assistant, 172 commits and counting. When something breaks, I want to know why. Away from the screen I play drums, basketball, ping pong and tennis.",
+    facts: [
+      { k: "Age", v: "17" },
+      { k: "School", v: "Irvington High · Class of 2027" },
+      { k: "Based in", v: "Fremont, CA" },
+      { k: "Shipped", v: "CarAdvisor · Next.js, TypeScript, AI" },
+      { k: "Built", v: "2 custom PCs" },
+      { k: "Plays", v: "Drums · Basketball · Ping pong · Tennis" },
     ],
     sports: ["Basketball", "Ping pong", "Tennis"],
-    marquee: ["PC Building", "Next.js", "TypeScript", "Supabase", "Prisma", "Tailwind", "Groq AI", "SEO", "Drums", "Basketball", "Ping Pong", "Tennis", "Fixing Tech"],
   },
 
   // Each build assembles itself on scroll. `base` parts are already in the case;
