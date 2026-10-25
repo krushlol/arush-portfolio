@@ -5,12 +5,18 @@ window.CONTENT = {
   email: "arushchirp@gmail.com",
   socials: [{ label: "Instagram", url: "https://instagram.com/arushxchirp" }],
 
-  heroLines: ["I build PCs,", "websites", "& beats."],
-  intro:
-    "Senior at Irvington High School in Fremont, CA. I like building things from scratch and fixing tech. Scroll to watch it all fall into place.",
+  heroTag: "Senior @ Irvington HS · Fremont, CA",
+  heroName: ["Arush", "Chirputkar"],
+  roles: ["PCs", "websites", "beats"],
+  intro: "I build things from scratch: gaming rigs, real websites and drum grooves. Scroll and watch it all lock into place.",
+  heroStats: [
+    { v: "2", k: "PCs built" },
+    { v: "1", k: "site live" },
+    { v: "17", k: "years old" },
+  ],
 
-  settleLines: ["Four things", "I love making."],
-  settleIntro: "Every card is something I've built, designed or played. Pick a column to dig in.",
+  settleLines: ["Everything", "I make."],
+  settleIntro: "Pick anything to jump straight to it.",
 
   about: {
     bio: "I'm Arush, a 17-year-old senior at Irvington High School in Fremont. I love building things from scratch, whether that's a PC, a website or a fix for some broken tech. When I'm not at a desk, I'm playing basketball, ping pong or tennis, or hanging out with family and friends.",

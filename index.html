@@ -6,7 +6,7 @@
   <title>Portfolio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -25,29 +25,32 @@
   </nav>
 
   <main id="top">
-    <!-- Pinned 3D scene: helix → isometric plane → sorted columns → panel -->
+    <!-- Pinned hero: floating cards of real work settle into a grid on scroll -->
     <section class="scene-wrap" id="scene-wrap">
+      <div class="hero-bg" aria-hidden="true">
+        <i class="glow g1"></i><i class="glow g2"></i><i class="glow g3"></i>
+        <div class="grid-floor"><div class="grid-plane" id="grid-plane"></div></div>
+      </div>
+
       <div class="copy hero-copy" id="hero-copy">
-        <p class="eyebrow">Portfolio · 2026</p>
-        <h1 id="hero-title"></h1>
+        <p class="eyebrow mono" id="hero-tag"></p>
+        <h1 class="hero-name" id="hero-name"></h1>
+        <p class="hero-role">I build <span class="role-word" id="role-word"></span><span class="caret"></span></p>
         <p class="intro" id="hero-intro"></p>
-        <a href="#builds" class="btn">See my work</a>
+        <div class="hero-ctas">
+          <a href="#builds" class="btn btn-neon">See my builds</a>
+          <a href="#drums" class="btn">Watch me drum</a>
+        </div>
+        <dl class="hero-stats" id="hero-stats"></dl>
       </div>
 
       <div class="copy settle-copy" id="settle-copy">
-        <p class="eyebrow">The collection</p>
+        <p class="eyebrow mono">// the collection</p>
         <h2 class="display" id="settle-title"></h2>
         <p class="intro" id="settle-intro"></p>
       </div>
 
-      <div class="scene">
-        <div class="stage" id="stage">
-          <div class="plane" id="plane">
-            <span class="mark tl"></span><span class="mark tr"></span>
-            <span class="mark bl"></span><span class="mark br"></span>
-          </div>
-        </div>
-      </div>
+      <div class="scene"><div class="stage" id="stage"></div></div>
 
       <div class="scroll-cue" id="scroll-cue"><span></span> Scroll</div>
     </section>

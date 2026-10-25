@@ -12,8 +12,10 @@
   document.title = `${C.name} · Portfolio`;
   $("#brand").textContent = C.name;
   $("#footer-name").textContent = C.name;
-  $("#hero-title").innerHTML = lines(C.heroLines);
+  $("#hero-tag").textContent = C.heroTag;
+  $("#hero-name").innerHTML = lines(C.heroName);
   $("#hero-intro").textContent = C.intro;
+  $("#hero-stats").innerHTML = C.heroStats.map((s) => `<div><dt>${esc(s.v)}</dt><dd>${esc(s.k)}</dd></div>`).join("");
   $("#settle-title").innerHTML = lines(C.settleLines);
   $("#settle-intro").textContent = C.settleIntro;
 
@@ -84,109 +86,149 @@
   $("#contact-email").href = `mailto:${C.email}`;
   $("#socials").innerHTML = C.socials.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ↗</a>`).join("");
 
-  // ---------- 3D cards ----------
-  const CATS = [
-    { id: "builds", label: "PC Builds", tint: "var(--t-pc)", titles: C.pcBuilds.map((b) => b.name) },
-    { id: "web", label: "Web Design", tint: "var(--t-web)", titles: C.webDesign.map((w) => w.title) },
-    { id: "projects", label: "Projects", tint: "var(--t-proj)", titles: C.projects.map((p) => p.title) },
-    { id: "drums", label: "Drumming", tint: "var(--t-drum)", titles: d.cardTitles },
+  // ---------- Hero: rotating role word ----------
+  const roleEl = $("#role-word");
+  const ROLE_COLORS = ["var(--n-purple)", "var(--n-cyan)", "var(--n-pink)"];
+  let roleI = 0;
+  const showRole = () => {
+    roleEl.textContent = C.roles[roleI % C.roles.length];
+    roleEl.style.setProperty("--neon", ROLE_COLORS[roleI % ROLE_COLORS.length]);
+    if (!reduce) gsap.fromTo(roleEl, { opacity: 0, yPercent: 60, filter: "blur(6px)" }, { opacity: 1, yPercent: 0, filter: "blur(0px)", duration: 0.55, ease: "back.out(1.6)" });
+    roleI++;
+  };
+  showRole();
+  if (!reduce) setInterval(showRole, 2200);
+
+  // ---------- Hero: floating cards of real work ----------
+  const rig = C.pcBuilds[0], mom = C.pcBuilds[1], site = C.webDesign[0];
+  const part = (b, k, f = "name") => b?.install.find((p) => p.key === k)?.[f] || "";
+  const plays = (C.about.facts.find((f) => f.k === "Plays")?.v || "").split("·").map((x) => x.trim()).filter(Boolean);
+  const eq = Array.from({ length: 16 }, (_, i) => `<i style="animation-duration:${(0.45 + ((i * 37) % 9) / 14).toFixed(2)}s;animation-delay:-${((i * 53) % 10) / 10}s"></i>`).join("");
+  const HERO = [
+    {
+      key: "web", href: "#web", neon: "var(--n-cyan)", w: 320,
+      float: [-30, -150, 60, 10, -22, -3],
+      html: `<div class="hc-head"><span>Web · Live</span><i class="live"></i></div>
+        <div class="hc-browser"><div class="bar"><i></i><i></i><i></i><span>${esc(site?.link.replace(/^https?:\/\//, ""))}</span></div>${site?.image ? `<img src="${esc(site.image)}" alt="${esc(site.title)}">` : ""}</div>
+        <strong>${esc(site?.title)}</strong>`,
+    },
+    {
+      key: "rig", href: "#builds", neon: "var(--n-purple)", w: 270,
+      float: [200, 0, 140, -8, -26, 2],
+      html: `<div class="hc-head"><span>PC Build 01</span><i class="live"></i></div>
+        <strong>${esc(rig?.name)}</strong>
+        <ul class="hc-specs"><li><b>CPU</b>${esc(part(rig, "cpu"))}</li><li><b>GPU</b>${esc(part(rig, "gpu"))}</li><li><b>RAM</b>${esc(part(rig, "ram"))}</li></ul>
+        <svg class="spark" viewBox="0 0 200 44" preserveAspectRatio="none"><path class="spark-fill" d="M0 44 L0 30 C20 26 30 32 45 24 S70 10 90 18 S120 34 140 20 S175 8 200 14 L200 44 Z"/><path class="spark-line" d="M0 30 C20 26 30 32 45 24 S70 10 90 18 S120 34 140 20 S175 8 200 14"/></svg>
+        <span class="hc-foot">${esc(rig?.base.find((p) => p.type === "Case")?.name)}</span>`,
+    },
+    {
+      key: "drums", href: "#drums", neon: "var(--n-pink)", w: 250,
+      float: [-180, 130, 90, 12, 18, 3],
+      html: `<div class="hc-head"><span>Drums</span><i class="live"></i></div>
+        <div class="hc-video">${d.poster ? `<img src="${esc(d.poster)}" alt="">` : ""}<span class="hc-play"></span></div>
+        <div class="eq">${eq}</div>
+        <strong>${esc(d.videoTitle || "Drumming")}</strong>`,
+    },
+    {
+      key: "mom", href: "#builds", neon: "var(--n-red)", w: 220,
+      float: [270, -210, -80, 14, -30, 5],
+      html: `<div class="hc-head"><span>PC Build 02</span></div>
+        <strong>${esc(mom?.name)}</strong>
+        <p class="hc-sub">${esc(part(mom, "gpu", "short"))} · ${esc(part(mom, "cpu", "short"))}</p>`,
+    },
+    {
+      key: "sports", href: "#about", neon: "var(--n-green)", w: 230,
+      float: [70, 230, -30, -14, 12, -5],
+      html: `<div class="hc-head"><span>Off the desk</span></div>
+        <div class="chips">${plays.map((x) => `<span>${esc(x)}</span>`).join("")}</div>`,
+    },
   ];
+  // Settled bento: left column (web, drums), right column (rig, mom, sports)
+  const COLS = [["web", "drums"], ["rig", "mom", "sports"]];
   const stage = $("#stage");
-  const plane = $("#plane");
-  const N = isMobile() ? 24 : 32;
-  const ROWS = Math.ceil(N / CATS.length);
-
-  const cards = Array.from({ length: N }, (_, i) => {
-    const c = i % CATS.length;
-    const row = Math.floor(i / CATS.length);
-    const cat = CATS[c];
-    const el = document.createElement("div");
-    el.className = "card";
-    el.style.setProperty("--tint", cat.tint);
-    el.innerHTML = `<span class="card-tag">${esc(cat.label)}</span><strong>${esc(cat.titles[row % cat.titles.length])}</strong><span class="card-lines"><i></i><i></i></span>`;
+  const cards = HERO.map((c, i) => {
+    const el = document.createElement("a");
+    el.className = "hcard";
+    el.href = c.href;
+    el.style.setProperty("--neon", c.neon);
+    el.style.width = c.w + "px";
+    el.innerHTML = c.html;
     stage.appendChild(el);
-    return { el, i, c, row };
+    return { ...c, el, i, settle: [0, 0] };
   });
+  const byKey = Object.fromEntries(cards.map((c) => [c.key, c]));
 
-  const labels = CATS.map((cat, c) => {
-    const a = document.createElement("a");
-    a.className = "col-label";
-    a.href = `#${cat.id}`;
-    a.innerHTML = `<b>0${c + 1}</b>${esc(cat.label)}`;
-    stage.appendChild(a);
-    return a;
-  });
+  const GAP = 18;
+  let bentoW = 600;
+  function measureSettle() {
+    const colW = COLS.map((col) => Math.max(...col.map((k) => byKey[k].w)));
+    bentoW = colW[0] + colW[1] + GAP;
+    const shift = (colW[0] - colW[1]) / 2; // centre the two columns as a whole
+    COLS.forEach((col, ci) => {
+      const hs = col.map((k) => byKey[k].el.offsetHeight);
+      const total = hs.reduce((a, b) => a + b, 0) + GAP * (col.length - 1);
+      let y = -total / 2;
+      const x = (ci === 0 ? -(colW[0] / 2 + GAP / 2) : colW[1] / 2 + GAP / 2) + shift;
+      col.forEach((k, j) => {
+        byKey[k].settle = [x, y + hs[j] / 2];
+        y += hs[j] + GAP;
+      });
+    });
+  }
+  measureSettle();
+  addEventListener("resize", measureSettle);
 
-  const COL_W = 200, ROW_STEP = 30, SPACING = 21, GRID_GAP = 84;
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
   const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   const lerp = (a, b, t) => a + (b - a) * t;
-  const mix = (A, B, t) => ({ x: lerp(A.x, B.x, t), y: lerp(A.y, B.y, t), z: lerp(A.z, B.z, t), rx: lerp(A.rx, B.rx, t), s: lerp(A.s, B.s, t) });
-
-  // Stage 0: twisted ribbon — cards stacked along x, each rotated a bit further around the x-axis
-  const helix = (k, ph) => ({ x: (k.i - (N - 1) / 2) * SPACING, y: Math.sin(k.i * 0.2 + ph * 0.02) * 60, z: 0, rx: k.i * 15 + ph, s: 1.15 });
-  // Stage 1: flat loose grid lying on the plane
-  const grid = (k) => {
-    const per = 8, gr = Math.ceil(N / per);
-    return { x: ((k.i % per) - (per - 1) / 2) * GRID_GAP, y: (Math.floor(k.i / per) - (gr - 1) / 2) * GRID_GAP * 0.75, z: 0, rx: 0, s: 0.5 };
-  };
-  // Stage 2: sorted into one stacked column per category
-  const colTop = -(ROWS - 1) * ROW_STEP / 2 + 20;
-  const column = (k) => ({ x: (k.c - (CATS.length - 1) / 2) * COL_W, y: colTop + k.row * ROW_STEP, z: k.row * 0.5, rx: 0, s: 0.62 });
 
   function layout() {
     const w = innerWidth, h = innerHeight;
-    if (isMobile()) return { offX: 0, offY: h * 0.17, scale: Math.max(0.4, w / 880) };
-    return { offX: w * (w < 1024 ? 0.2 : 0.16), offY: 0, scale: Math.min(1, w / 1400) };
+    if (isMobile()) return { offX: 0, offY: h * 0.24, scale: Math.min(0.55, w / 700), settleScale: Math.min(0.62, (w - 28) / bentoW) };
+    return { offX: w * (w < 1100 ? 0.2 : 0.2), offY: 20, scale: Math.min(1, w / 1450), settleScale: Math.min(0.92, w / 1500) };
   }
 
-  const heroCopy = $("#hero-copy"), settleCopy = $("#settle-copy"), cue = $("#scroll-cue"), progress = $("#progress");
+  const heroCopy = $("#hero-copy"), settleCopy = $("#settle-copy"), cue = $("#scroll-cue"), progress = $("#progress"), grid = $("#grid-plane");
   let p = reduce ? 1 : 0;
-  let ph = 0;
+  let t = 0, mx = 0, my = 0, smx = 0, smy = 0;
   let last = performance.now();
+  addEventListener("pointermove", (e) => {
+    mx = (e.clientX / innerWidth - 0.5) * 2;
+    my = (e.clientY / innerHeight - 0.5) * 2;
+  });
 
   function render() {
     const now = performance.now();
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-
-    const a = ease(clamp01(p / 0.3));
-    const rawB = clamp01((p - 0.3) / 0.35);
-    const b = ease(rawB);
-    const c = ease(clamp01((p - 0.65) / 0.35));
-    if (!reduce) ph += dt * 22 * (1 - a);
-
-    for (const k of cards) {
-      let S;
-      if (rawB > 0) {
-        const bk = ease(clamp01(rawB * 1.4 - (k.i / N) * 0.4));
-        S = mix(grid(k), column(k), bk);
-        S.z += Math.sin(bk * Math.PI) * 90; // arc up while flying to its column
-      } else {
-        S = mix(helix(k, ph), grid(k), a);
-      }
-      k.el.style.transform = `translate3d(${S.x}px,${S.y}px,${S.z}px) rotateX(${S.rx}deg) scale(${S.s})`;
-    }
-
-    labels.forEach((el, i) => {
-      el.style.opacity = b;
-      el.style.transform = `translate3d(${(i - (CATS.length - 1) / 2) * COL_W}px,${colTop - 72 - (1 - b) * 20}px,0)`;
-    });
+    if (!reduce) t += dt;
+    smx += (mx - smx) * 0.06;
+    smy += (my - smy) * 0.06;
 
     const L = layout();
-    const tilt = a * (1 - c);
-    stage.style.transform = `translate3d(${L.offX}px,${L.offY}px,0) scale(${L.scale * lerp(1, 0.92, c)}) rotateX(${55 * tilt}deg) rotateZ(${-35 * tilt}deg)`;
-    plane.style.opacity = a;
-    plane.style.setProperty("--c", c);
-    plane.classList.toggle("settled", c > 0.5);
+    const free = 1 - ease(clamp01(p / 0.75)); // 1 = floating, 0 = settled
+    for (const c of cards) {
+      const k = ease(clamp01(p * 1.25 - c.i * 0.05));
+      const [fx, fy, fz, frx, fry, frz] = c.float;
+      const bob = Math.sin(t * 0.9 + c.i * 1.7) * 10 * free;
+      const x = lerp(fx, c.settle[0], k), y = lerp(fy, c.settle[1], k) + bob, z = lerp(fz, 0, k);
+      const rx = lerp(frx, 0, k) + Math.sin(t * 0.6 + c.i) * 2 * free;
+      const ry = lerp(fry, 0, k) + Math.cos(t * 0.5 + c.i) * 3 * free;
+      const rz = lerp(frz, 0, k);
+      c.el.style.transform = `translate3d(${x}px,${y}px,${z}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) translate(-50%,-50%)`;
+    }
+    const sc = lerp(L.scale, L.settleScale, 1 - free);
+    stage.style.transform = `translate3d(${L.offX}px,${L.offY}px,0) scale(${sc}) rotateY(${smx * 8 * free}deg) rotateX(${-smy * 5 * free}deg)`;
 
-    const h = ease(clamp01(p / 0.14));
+    const h = ease(clamp01(p / 0.22));
     heroCopy.style.opacity = 1 - h;
     heroCopy.style.translate = `0 ${-h * 40}px`;
     heroCopy.style.pointerEvents = h > 0.5 ? "none" : "";
     cue.style.opacity = 1 - h;
+    const c = ease(clamp01((p - 0.6) / 0.4));
     settleCopy.style.opacity = c;
     settleCopy.style.translate = `0 ${(1 - c) * 30}px`;
+    grid.style.setProperty("--shift", `${p * 240}px`);
 
     const max = document.documentElement.scrollHeight - innerHeight;
     progress.style.width = `${max > 0 ? (scrollY / max) * 100 : 0}%`;
@@ -206,14 +248,15 @@
     ScrollTrigger.create({
       trigger: "#scene-wrap",
       start: "top top",
-      end: () => "+=" + innerHeight * (isMobile() ? 2.2 : 3),
+      end: () => "+=" + innerHeight * (isMobile() ? 1.4 : 1.8),
       pin: true,
       scrub: true,
       onUpdate: (s) => (p = s.progress),
     });
 
     gsap.from("#hero-copy .w", { yPercent: 110, duration: 1.1, stagger: 0.08, ease: "power4.out", delay: 0.1 });
-    gsap.from("#hero-copy .eyebrow, #hero-intro, #hero-copy .btn", { opacity: 0, y: 20, duration: 0.9, stagger: 0.1, delay: 0.5 });
+    gsap.from("#hero-copy .eyebrow, #hero-copy .hero-role, #hero-intro, #hero-copy .hero-ctas, #hero-stats", { opacity: 0, y: 20, duration: 0.9, stagger: 0.1, delay: 0.45 });
+    gsap.from(".hcard", { opacity: 0, duration: 1.2, stagger: 0.08, ease: "power3.out", delay: 0.3 });
 
     gsap.utils.toArray("[data-reveal]").forEach((el) =>
       gsap.from(el, { y: 60, opacity: 0, duration: 1.1, ease: "power3.out", scrollTrigger: { trigger: el, start: "top 88%" } })
