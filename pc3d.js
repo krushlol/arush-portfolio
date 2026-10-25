@@ -1075,7 +1075,7 @@ function buildScene(wrap, build, n) {
   // ----- render loop -----
   let visible = false, raf = 0, last = performance.now(), spin = 0, W = 1, H = 1;
   // Drag-to-orbit state (with a little inertia after release)
-  let yaw = 0, pitch = 0, vYaw = 0, vPitch = 0, dragging = false, lastX = 0, lastY = 0;
+  let yaw = 0, pitch = 0, vYaw = 0, vPitch = 0, dragging = false, lastX = 0, lastY = 0, lastP = 0;
   const allFans = [...fans, ...gpu.userData.fans];
   function frame() {
     raf = 0;
@@ -1087,11 +1087,18 @@ function buildScene(wrap, build, n) {
     spin += dt * power * 24;
     allFans.forEach((f, i) => (f.userData.rotor.rotation.z = spin * (i % 2 ? 1 : 1.06)));
     diffuserTex.offset.y += dt * power * 0.25;
+    const scrolling = Math.abs(p - lastP) > 0.0002;
+    lastP = p;
     if (!dragging) {
       yaw += vYaw;
       pitch += vPitch;
       vYaw *= 0.92;
       vPitch *= 0.92;
+      // Scrolling hands the camera back to the scripted close-ups (shortest way round)
+      if (scrolling) {
+        yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw)) * 0.9;
+        pitch *= 0.9;
+      }
     }
     pitch = Math.max(-0.6, Math.min(1.1, pitch));
     placeCamera(p, yaw, pitch);
@@ -1158,14 +1165,13 @@ function buildScene(wrap, build, n) {
     kick();
   });
   resize();
-  // Compile every shader up front (in parallel where supported) so the first frame doesn't hitch
+  // Compile every shader now, while the page is idle, so the first visible frame doesn't hitch
   apply(1);
   placeCamera(0, 0, 0);
-  return renderer.compileAsync(scene, camera).catch(() => {}).then(() => {
-    apply(reduce ? 1 : window.PC_PROGRESS?.[n] ?? 0);
-    wrap.classList.add("ready");
-    kick();
-  });
+  renderer.compile(scene, camera);
+  apply(reduce ? 1 : window.PC_PROGRESS?.[n] ?? 0);
+  wrap.classList.add("ready");
+  kick();
 }
 
 function hasWebGL() {
@@ -1178,23 +1184,29 @@ function hasWebGL() {
 }
 
 if (hasWebGL()) {
-  // Build each scene only when it is about to scroll into view, one at a time,
-  // after the fonts are ready so the canvas-drawn labels use Space Grotesk / Inter
-  const pending = new Set(document.querySelectorAll(".rig-wrap"));
-  let queue = Promise.resolve();
-  const io = new IntersectionObserver(
-    (entries) =>
-      entries.forEach((e) => {
-        if (!e.isIntersecting || !pending.has(e.target)) return;
-        pending.delete(e.target);
-        io.unobserve(e.target);
-        const wrap = e.target;
-        const n = +wrap.querySelector(".rig3d").dataset.build;
-        queue = queue.then(() => document.fonts.ready).then(() => buildScene(wrap, C.pcBuilds[n], n));
-      }),
-    { rootMargin: "150% 0px" }
-  );
-  pending.forEach((w) => io.observe(w));
+  // Build both scenes in the background soon after load, one per idle slot, so they're ready
+  // before anyone scrolls down; getting close to one builds it immediately. Waits for fonts
+  // so the canvas-drawn labels use Space Grotesk / Inter.
+  const wraps = [...document.querySelectorAll(".rig-wrap")];
+  const built = new Set();
+  const idle = (fn) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 200));
+  const build = (wrap) => {
+    if (built.has(wrap)) return;
+    built.add(wrap);
+    const n = +wrap.querySelector(".rig3d").dataset.build;
+    buildScene(wrap, C.pcBuilds[n], n);
+  };
+  document.fonts.ready.then(() => {
+    const next = () => {
+      const w = wraps.find((x) => !built.has(x));
+      if (!w) return;
+      build(w);
+      idle(next);
+    };
+    idle(next);
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => e.isIntersecting && build(e.target)), { rootMargin: "100% 0px" });
+    wraps.forEach((w) => io.observe(w));
+  });
 } else {
   document.querySelectorAll(".rig-wrap").forEach((w) => w.classList.add("no-webgl"));
 }
