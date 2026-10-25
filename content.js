@@ -85,10 +85,25 @@ window.CONTENT = {
     },
   ],
 
-  projects: [
-    { title: "[Project One]", desc: "One or two lines about what it does and why you made it.", tags: ["Code"], link: "#" },
-    { title: "[Project Two]", desc: "One or two lines about what it does and why you made it.", tags: ["Hardware"], link: "#" },
-    { title: "[Project Three]", desc: "One or two lines about what it does and why you made it.", tags: ["Design"], link: "#" },
+  courses: [
+    {
+      title: "embARC",
+      org: "UC Berkeley",
+      desc: "An architectural engineering course at Berkeley, where I studied how buildings are designed and engineered, from first concept to structure.",
+      tags: ["Architecture", "Engineering"],
+    },
+    {
+      title: "Electrical Engineering",
+      org: "Johns Hopkins",
+      desc: "A Johns Hopkins electrical engineering course focused on energy sustainability and how cleaner energy systems are designed.",
+      tags: ["Electrical Engineering", "Sustainability"],
+    },
+    {
+      title: "Design",
+      org: "California College of the Arts, SF",
+      desc: "A design course at CCA in San Francisco, built around visual thinking and making ideas look and work right.",
+      tags: ["Design"],
+    },
   ],
 
   drumming: {

@@ -53,13 +53,14 @@
     )
     .join("");
 
-  $("#project-grid").innerHTML = C.projects
+  $("#course-grid").innerHTML = C.courses
     .map(
-      (p) => `<a class="project glass-card" href="${esc(p.link)}" target="_blank" rel="noopener" data-reveal>
+      (c) => `<article class="project glass-card" data-reveal>
         <div class="media" style="--tint:var(--t-proj)"></div>
-        <h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p>
-        <div class="tags">${p.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>
-      </a>`
+        <p class="course-org">${esc(c.org)}</p>
+        <h3>${esc(c.title)}</h3><p>${esc(c.desc)}</p>
+        <div class="tags">${c.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+      </article>`
     )
     .join("");
 

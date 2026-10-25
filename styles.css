@@ -240,6 +240,8 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.2rem); }
 .project { padding: 24px; display: flex; flex-direction: column; min-height: 240px; transition: transform .3s; }
 .project:hover { transform: translateY(-6px); }
 .project .media { height: 6px; border-radius: 3px; margin-bottom: 24px; }
+#course-grid h3 { text-transform: none; }
+.project .course-org { flex: none; margin: 0 0 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--n-green); }
 .project p { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 10px 0 20px; flex: 1; }
 
 .drum-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; align-items: start; }
