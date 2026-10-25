@@ -29,7 +29,9 @@ window.CONTENT = {
       name: "Main Rig",
       note: "My personal build: gaming, editing, everything.",
       accent: "#8b7cf6",
-      gpuMount: "vertical",
+      // 3D model: "hs420" (dual-chamber, vertical GPU) or "midtower" (classic, horizontal GPU)
+      caseModel: "hs420",
+      caseColor: "#121216",
       base: [
         { type: "Case", name: "HAVN HS 420 VGPU" },
         { type: "Motherboard", name: "[Motherboard]" },
@@ -47,7 +49,8 @@ window.CONTENT = {
       name: "Mom's Build",
       note: "Built this one for my mom.",
       accent: "#ef5a4c",
-      gpuMount: "horizontal",
+      caseModel: "midtower",
+      caseColor: "#e6e6ea",
       base: [
         { type: "Case", name: "[Case]" },
         { type: "Motherboard", name: "[Motherboard]" },
@@ -80,10 +83,12 @@ window.CONTENT = {
   ],
 
   drumming: {
-    blurb: "[How long you've played, your style, bands or covers you love.]",
-    // Paste a YouTube embed URL, e.g. "https://www.youtube.com/embed/VIDEO_ID"
-    video: "",
+    blurb: "My cover of \"Beggin'\", played with an extra heavy kick. [Add a line about how long you've played and what you like to play.]",
+    // A local .mp4 in assets/ or a YouTube embed URL ("https://www.youtube.com/embed/VIDEO_ID")
+    video: "assets/beggin-drum-cover.mp4",
+    poster: "assets/beggin-poster.jpg",
+    videoTitle: "Beggin' — Drum Cover",
     kit: ["[Kit / shell pack]", "[Snare]", "[Cymbals]", "[Pedal]"],
-    cardTitles: ["[Cover #1]", "[Groove practice]", "[Live set]", "[Drum kit]"],
+    cardTitles: ["Beggin' Cover", "[Groove practice]", "[Live set]", "[Drum kit]"],
   },
 };

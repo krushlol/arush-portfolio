@@ -22,36 +22,10 @@
     <p class="about-bio" data-reveal>${esc(C.about.bio)}</p>
     <dl class="facts" data-reveal>${C.about.facts.map((f) => `<div><dt>${esc(f.k)}</dt><dd>${esc(f.v)}</dd></div>`).join("")}</dl>`;
 
-  // PC case drawn in a fixed 560×620 design space; base parts are always there,
-  // install parts (cpu/ram/ssd/gpu) get animated into their slots on scroll.
-  const fans = (n, cls) => Array.from({ length: n }, () => `<i class="fan ${cls}"></i>`).join("");
-  const short = (b, key) => esc(b.install.find((p) => p.key === key)?.short || "");
-  const rigHTML = (b) => `
-    <div class="rig ${b.gpuMount === "vertical" ? "vgpu" : ""}" style="--accent-rig:${b.accent}">
-      <div class="case-glass"></div>
-      <div class="radiator">${fans(3, "")}</div>
-      <div class="rear-fan">${fans(1, "")}</div>
-      <div class="front-fans">${fans(3, "")}</div>
-      <div class="mobo">
-        <span class="trace"></span>
-        <span class="slot slot-cpu"></span>
-        <span class="slot slot-ram"></span>
-        <span class="slot slot-ssd"></span>
-        <span class="slot slot-gpu"></span>
-        <span class="dimms"><i></i><i></i><i></i><i></i></span>
-        <span class="pcie"></span>
-      </div>
-      <div class="shroud"><span>${esc(b.base.find((p) => p.type === "PSU")?.name || "PSU")}</span></div>
-      <div class="part p-cpu"><span>${short(b, "cpu")}</span></div>
-      <div class="part p-ram"><i></i><i></i></div>
-      <div class="part p-ssd"><span>${short(b, "ssd")}</span></div>
-      <div class="part p-gpu">${fans(3, "gpu-fan")}<span>${short(b, "gpu")}</span></div>
-    </div>`;
-
   $("#build-list").innerHTML = C.pcBuilds
     .map(
       (b, n) => `<article class="assembly" style="--accent-rig:${b.accent}">
-        <div class="rig-wrap">${rigHTML(b)}</div>
+        <div class="rig-wrap"><canvas class="rig3d" data-build="${n}"></canvas><p class="rig-fallback">3D needs WebGL — here's the parts list instead.</p><span class="rig-hint">Move your mouse to look around</span></div>
         <div class="parts">
           <p class="eyebrow">Build 0${n + 1}</p>
           <h3>${esc(b.name)}</h3>
@@ -65,14 +39,6 @@
       </article>`
     )
     .join("");
-
-  // Scale each rig to fit its wrapper
-  const fitRigs = () =>
-    document.querySelectorAll(".rig-wrap").forEach((w) => {
-      w.querySelector(".rig").style.setProperty("--s", Math.min(w.clientWidth / 560, w.clientHeight / 620));
-    });
-  fitRigs();
-  addEventListener("resize", fitRigs);
 
   $("#web-list").innerHTML = C.webDesign
     .map(
@@ -99,8 +65,15 @@
   $("#drum-layout").innerHTML = `
     <div class="glass-card" data-reveal>
       <div class="media drum-video" style="--tint:var(--t-drum)">
-        ${d.video ? `<iframe src="${esc(d.video)}" title="Drumming video" allowfullscreen loading="lazy"></iframe>` : `<div class="play" aria-label="Add a video"></div>`}
+        ${
+          !d.video
+            ? `<div class="play" aria-label="Add a video"></div>`
+            : /\.(mp4|webm|mov)$/i.test(d.video)
+            ? `<video src="${esc(d.video)}" poster="${esc(d.poster || "")}" controls playsinline preload="metadata"></video>`
+            : `<iframe src="${esc(d.video)}" title="Drumming video" allowfullscreen loading="lazy"></iframe>`
+        }
       </div>
+      ${d.videoTitle ? `<p class="video-title">${esc(d.videoTitle)}</p>` : ""}
     </div>
     <div class="drum-info" data-reveal>
       <p>${esc(d.blurb)}</p>
@@ -249,55 +222,40 @@
       gsap.fromTo(el, { yPercent: -4 }, { yPercent: 4, ease: "none", scrollTrigger: { trigger: el, scrub: true } })
     );
 
-    // PC assembly: one pinned scene per build, one part per scroll step, then power on
-    const FROM = {
-      cpu: { y: -460, rotate: -25 },
-      ram: { x: 460, rotate: 18 },
-      ssd: { x: -460, rotate: -12 },
-      gpu: { x: 420, y: 320, rotate: 16 },
-    };
+    // PC assembly: pin each build while pc3d.js renders it from PC_PROGRESS
+    const STEPS = { cpu: 0.24, ram: 0.38, ssd: 0.56, gpu: 0.76 };
+    const ON = 0.9;
+    window.PC_PROGRESS = [];
     document.querySelectorAll(".assembly").forEach((asm, n) => {
       const build = C.pcBuilds[n];
-      const rig = asm.querySelector(".rig");
       const label = asm.querySelector(".meter-label");
       const bar = asm.querySelector(".meter-bar i");
-      const steps = build.install.length;
-      const tl = gsap.timeline({
-        defaults: { ease: "power3.out" },
-        scrollTrigger: {
-          trigger: asm,
-          start: "top top",
-          end: () => "+=" + innerHeight * (steps * 0.7 + 0.6),
-          pin: true,
-          scrub: 0.6,
-          onUpdate: (s) => {
-            const done = Math.min(steps, Math.floor(s.progress * (steps + 1) + 0.05));
-            const on = s.progress > 0.93;
-            rig.classList.toggle("on", on);
-            bar.style.width = `${s.progress * 100}%`;
-            label.textContent = on
-              ? "Powered on ✓"
-              : done === 0
-              ? "Scroll to build"
-              : `${done}/${steps} · ${build.install[done - 1].type} installed`;
-          },
+      const rows = [...asm.querySelectorAll(".part-row.add")];
+      ScrollTrigger.create({
+        trigger: asm,
+        start: "top top",
+        end: () => "+=" + innerHeight * 5,
+        pin: true,
+        scrub: true,
+        onUpdate: (s) => {
+          const p = s.progress;
+          window.PC_PROGRESS[n] = p;
+          bar.style.width = `${p * 100}%`;
+          let done = 0;
+          rows.forEach((r) => {
+            const ok = p >= STEPS[r.dataset.key];
+            r.classList.toggle("done", ok);
+            if (ok) done++;
+          });
+          const next = build.install.find((x) => p < STEPS[x.key]);
+          label.textContent =
+            p >= ON ? "Powered on ✓" : p < 0.08 ? "Scroll to build" : done === build.install.length ? "Closing it up…" : `${done}/${build.install.length} · Installing ${next.type}`;
         },
       });
-      build.install.forEach((p) => {
-        const el = rig.querySelector(`.p-${p.key}`);
-        const slot = rig.querySelector(`.slot-${p.key}`);
-        const row = asm.querySelector(`.part-row[data-key="${p.key}"]`);
-        tl.fromTo(slot, { opacity: 0.25 }, { opacity: 1, duration: 0.25 })
-          .fromTo(el, { ...FROM[p.key], opacity: 0, scale: 1.2 }, { x: 0, y: 0, rotate: 0, opacity: 1, scale: 1, duration: 1 })
-          .to(slot, { opacity: 0, duration: 0.2 })
-          .fromTo(row, { opacity: 0.3, x: 12 }, { opacity: 1, x: 0, duration: 0.4 }, "<-0.3")
-          .fromTo(row.querySelector(".check"), { scale: 0 }, { scale: 1, duration: 0.3, ease: "back.out(3)" }, "<")
-          .to({}, { duration: 0.25 });
-      });
-      tl.to({}, { duration: 0.8 });
     });
   } else {
-    document.querySelectorAll(".rig").forEach((r) => r.classList.add("on"));
+    window.PC_PROGRESS = C.pcBuilds.map(() => 1);
+    document.querySelectorAll(".part-row.add").forEach((r) => r.classList.add("done"));
   }
 
   gsap.ticker.add(render);
