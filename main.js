@@ -27,7 +27,7 @@
   $("#build-list").innerHTML = C.pcBuilds
     .map(
       (b, n) => `<article class="assembly" style="--accent-rig:${b.accent}">
-        <div class="rig-wrap"><canvas class="rig3d" data-build="${n}"></canvas><p class="rig-fallback">3D needs WebGL — here's the parts list instead.</p><div class="callout"><i></i><b></b><span><small></small><em></em></span></div><span class="rig-hint">Move your mouse to look around</span></div>
+        <div class="rig-wrap"><canvas class="rig3d" data-build="${n}"></canvas><p class="rig-fallback">3D needs WebGL — here's the parts list instead.</p><div class="callout"><i></i><b></b><span><small></small><em></em></span></div><span class="rig-hint"><i>⟲</i> Drag to rotate 360° · double-click to reset</span></div>
         <div class="parts">
           <p class="eyebrow">Build 0${n + 1}</p>
           <h3>${esc(b.name)}</h3>

@@ -952,16 +952,18 @@ function buildScene(wrap, build, n) {
   ];
   const camTarget = V(), tmpDir = V();
   let distScale = 1;
-  function placeCamera(p, mx, my) {
+  // yaw/pitch are the viewer's drag-orbit offsets on top of the scripted shot
+  function placeCamera(p, yaw = 0, pitch = 0) {
     let i = 0;
     while (i < shots.length - 2 && p > shots[i + 1][0]) i++;
     const [p0, t0, d0, r0] = shots[i], [p1, t1, d1, r1] = shots[i + 1];
     const k = easeInOut(clamp01((p - p0) / (p1 - p0)));
     camTarget.lerpVectors(t0, t1, k);
-    tmpDir.lerpVectors(d0, d1, k);
-    tmpDir.x += mx * 0.1;
-    tmpDir.y += my * 0.06;
-    camera.position.copy(camTarget).addScaledVector(tmpDir.normalize(), (r0 + (r1 - r0) * k) * distScale);
+    tmpDir.lerpVectors(d0, d1, k).normalize();
+    const theta = Math.atan2(tmpDir.x, tmpDir.z) + yaw;
+    const phi = Math.max(0.03, Math.min(1.35, Math.asin(tmpDir.y) + pitch)); // stay above the floor
+    tmpDir.set(Math.sin(theta) * Math.cos(phi), Math.sin(phi), Math.cos(theta) * Math.cos(phi));
+    camera.position.copy(camTarget).addScaledVector(tmpDir, (r0 + (r1 - r0) * k) * distScale);
     camera.lookAt(camTarget);
   }
 
@@ -1071,7 +1073,9 @@ function buildScene(wrap, build, n) {
   }
 
   // ----- render loop -----
-  let visible = false, raf = 0, last = performance.now(), mx = 0, my = 0, smx = 0, smy = 0, spin = 0, W = 1, H = 1;
+  let visible = false, raf = 0, last = performance.now(), spin = 0, W = 1, H = 1;
+  // Drag-to-orbit state (with a little inertia after release)
+  let yaw = 0, pitch = 0, vYaw = 0, vPitch = 0, dragging = false, lastX = 0, lastY = 0;
   const allFans = [...fans, ...gpu.userData.fans];
   function frame() {
     raf = 0;
@@ -1083,9 +1087,14 @@ function buildScene(wrap, build, n) {
     spin += dt * power * 24;
     allFans.forEach((f, i) => (f.userData.rotor.rotation.z = spin * (i % 2 ? 1 : 1.06)));
     diffuserTex.offset.y += dt * power * 0.25;
-    smx += (mx - smx) * 0.05;
-    smy += (my - smy) * 0.05;
-    placeCamera(p, smx, smy);
+    if (!dragging) {
+      yaw += vYaw;
+      pitch += vPitch;
+      vYaw *= 0.92;
+      vPitch *= 0.92;
+    }
+    pitch = Math.max(-0.6, Math.min(1.1, pitch));
+    placeCamera(p, yaw, pitch);
     updateCallout(p, W, H);
     composer.render();
     if (visible && !reduce) raf = requestAnimationFrame(frame);
@@ -1118,12 +1127,36 @@ function buildScene(wrap, build, n) {
     visible = e.isIntersecting;
     if (visible) kick();
   }).observe(wrap);
-  asm.addEventListener("pointermove", (e) => {
-    const r = wrap.getBoundingClientRect();
-    mx = ((e.clientX - r.left) / r.width - 0.5) * 2;
-    my = ((e.clientY - r.top) / r.height - 0.5) * 2;
+  wrap.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    dragging = true;
+    vYaw = vPitch = 0;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    wrap.setPointerCapture(e.pointerId);
+    wrap.classList.add("dragging");
   });
-  asm.addEventListener("pointerleave", () => (mx = my = 0));
+  wrap.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    vYaw = (-dx / W) * Math.PI * 2; // a full-width drag = one full turn
+    vPitch = (dy / H) * Math.PI * 0.8;
+    yaw += vYaw;
+    pitch += vPitch;
+    kick();
+  });
+  const endDrag = () => {
+    dragging = false;
+    wrap.classList.remove("dragging");
+  };
+  wrap.addEventListener("pointerup", endDrag);
+  wrap.addEventListener("pointercancel", endDrag);
+  wrap.addEventListener("dblclick", () => {
+    yaw = pitch = vYaw = vPitch = 0;
+    kick();
+  });
   resize();
   // Compile every shader up front (in parallel where supported) so the first frame doesn't hitch
   apply(1);
