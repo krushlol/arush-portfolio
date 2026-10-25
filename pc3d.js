@@ -7,6 +7,17 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
+
+// Ambient occlusion that ignores glass and other see-through surfaces, so it shades the parts inside
+class GlassAwareGTAOPass extends GTAOPass {
+  overrideVisibility() {
+    super.overrideVisibility();
+    this.scene.traverse((o) => {
+      if (o.isMesh && (o.material.transparent || o.userData.noAO)) o.visible = false;
+    });
+  }
+}
 
 const C = window.CONTENT;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -16,7 +27,8 @@ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const T = {
   panelOff: [0.02, 0.09],
   cpu: [0.1, 0.17],
-  lever: [0.17, 0.19],
+  lever: [0.17, 0.185],
+  paste: [0.185, 0.195],
   pump: [0.19, 0.24],
   ram: [0.28, 0.38],
   ssd: [0.45, 0.53],
@@ -181,6 +193,31 @@ const finTex = (rep = [1, 1]) =>
       g.fillRect(x, 0, 2, h);
     }
   }, rep);
+
+// Brushed-aluminium streaks, used as a roughness map on metal
+const brushedTex = () =>
+  canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = "#c8c8c8";
+    g.fillRect(0, 0, w, h);
+    const r = rng(11);
+    for (let i = 0; i < 900; i++) {
+      const v = 150 + Math.floor(r() * 105);
+      g.fillStyle = `rgba(${v},${v},${v},0.35)`;
+      g.fillRect(0, r() * h, w, 1);
+    }
+  }, [3, 3]);
+
+// Two-digit debug code display ("A0" = booted OK on Intel boards)
+const qcodeTex = () =>
+  canvasTex(128, 80, (g, w, h) => {
+    g.fillStyle = "#000";
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = "#ff3b1f";
+    g.font = '700 62px "JetBrains Mono", monospace';
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("A0", w / 2, h / 2 + 4);
+  });
 
 const meshTex = (light) =>
   canvasTex(128, 128, (g, w, h) => {
@@ -355,7 +392,7 @@ function bladeGeo(rIn, rOut, thick) {
 }
 
 // ---------- components ----------
-function makeFan(size, M, { frame = true, ring = true, blades = M.fanBlade, count = 7, hub = M.fanHub } = {}) {
+function makeFan(size, M, { frame = true, ring = true, blades = M.fanBlade, count = 7, hub = M.fanHub, rim = false } = {}) {
   const g = new THREE.Group();
   const depth = size * 0.21, r = size * 0.45;
   if (frame) {
@@ -373,6 +410,7 @@ function makeFan(size, M, { frame = true, ring = true, blades = M.fanBlade, coun
       strut.geometry.translate(r * 0.5, 0, 0);
       strut.rotation.z = (i / 3) * Math.PI * 2 + 0.5;
     }
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sy]) => cylZ(size * 0.018, 0.12, M.silver, sx * size * 0.42, sy * size * 0.42, depth / 2 + 0.11, g, 10));
   }
   const rotor = new THREE.Group();
   g.add(rotor);
@@ -387,6 +425,11 @@ function makeFan(size, M, { frame = true, ring = true, blades = M.fanBlade, coun
     const b = mesh(bg, blades, pv);
     b.rotation.x = 0.42;
     rotor.add(pv);
+  }
+  if (rim) {
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(r * 0.98, size * 0.018, 8, 64), blades);
+    ring2.castShadow = true;
+    rotor.add(ring2);
   }
   if (ring) {
     [-1, 1].forEach((s) => {
@@ -454,8 +497,9 @@ function makeMotherboard(M, label) {
   for (let i = 0; i < 6; i++) box(0.72, 0.72, 0.6, M.choke, -8.15, 3.2 + i * 0.95, Z + 0.3, g, 0.06);
   for (let i = 0; i < 6; i++) cylZ(0.26, 0.8, M.cap, -6.9 + i * 0.75, 10.1, Z + 0.4, g, 14);
   box(9.5, 2.6, 2.4, M.gunmetal, -3.5, 13.4, Z + 1.2, g, 0.25);
-  plane(9.2, 2.2, new THREE.MeshStandardMaterial({ map: finTex([3, 1]), metalness: 0.7, roughness: 0.35 }), -3.5, 13.4, Z + 2.41, g);
+  for (let i = 0; i < 12; i++) box(0.3, 2.6, 0.9, M.gunmetal, -8.0 + i * 0.82, 13.4, Z + 2.85, g);
   box(2.4, 9, 2.4, M.gunmetal, -7.3, 6.0, Z + 1.2, g, 0.25);
+  for (let i = 0; i < 10; i++) box(2.4, 0.3, 0.9, M.gunmetal, -7.3, 2.0 + i * 0.9, Z + 2.85, g);
   // CPU socket (LGA1700 ILM) with lever
   const socket = new THREE.Group();
   socket.position.set(-3, 6.5, Z);
@@ -496,6 +540,10 @@ function makeMotherboard(M, label) {
   box(2.4, 0.4, 0.06, M.gold, 5.6, -14.6, Z + 0.62, g);
   box(2.0, 0.9, 0.9, M.usbBlue, -2.3, -14.4, Z + 0.45, g);
   [0, 1, 2, 3].forEach((i) => box(0.25, 0.4, 0.12, M.led, 10.8, 9.2 + i * 0.6, Z + 0.06, g));
+  [[11.6, -1.2], [-11.2, -14.6], [2.2, 14.6]].forEach(([x, y]) => box(1.0, 0.45, 0.6, M.header, x, y, Z + 0.3, g));
+  box(1.6, 1.1, 0.25, M.plastic, 9.6, 12.4, Z + 0.13, g);
+  const qcode = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, emissive: 0xffffff, emissiveMap: qcodeTex(), emissiveIntensity: 0, roughness: 0.3 });
+  plane(1.36, 0.85, qcode, 9.6, 12.4, Z + 0.26, g);
   // M.2 slot + standoff
   box(0.6, 2.2, 0.55, M.plastic, -8.2, -1.5, Z + 0.27, g);
   cylZ(0.25, 0.4, M.gold, 0, -1.5, Z + 0.2, g, 12);
@@ -514,7 +562,7 @@ function makeMotherboard(M, label) {
   // CMOS battery
   cylZ(1.0, 0.3, M.silver, 1.5, -12.2, Z + 0.15, g, 32);
 
-  g.userData = { lever, dimmX, latches, Z };
+  g.userData = { lever, dimmX, latches, qcode, Z };
   return g;
 }
 
@@ -569,6 +617,7 @@ function makeGPU(M, name) {
   const bp = new THREE.MeshStandardMaterial({ map: backplateTex(brand), metalness: 0.75, roughness: 0.35 });
   box(L, H, 0.3, bp, 0, 0, 0.15, g, 0.1).rotation.y = Math.PI; // logo faces outward (-z)
   box(L - 1, H - 1, 2.3, M.finBlock, 0, 0, 1.5, g);
+  [[-13, 4.6], [-13, -4.6], [-3, 4.6], [-3, -4.6], [6, 3.2], [6, -3.2], [13, 4.6], [13, -4.6]].forEach(([x, y]) => cylZ(0.24, 0.12, M.silver, x, y, -0.04, g, 12));
   // Copper heatpipes running the length of the card, visible along the top edge
   for (let i = 0; i < 4; i++) {
     const hp = mesh(new THREE.CylinderGeometry(0.28, 0.28, L - 3, 12), M.copper, g);
@@ -589,7 +638,7 @@ function makeGPU(M, name) {
   [-4.8, 4.8].forEach((x) => (box(0.45, H - 1.4, 0.3, M.trim, x, 0, 5.0, g, 0.1).rotation.z = 0.32));
   box(L - 0.6, H - 0.6, 1.4, M.shroudInner, 0, 0, 3.3, g);
   const fans = [-9.6, 0, 9.6].map((x) => {
-    const f = makeFan(9.2, M, { frame: false, ring: false, blades: M.gpuBlade, count: 11, hub: M.gpuHub });
+    const f = makeFan(9.2, M, { frame: false, ring: false, blades: M.gpuBlade, count: 11, hub: M.gpuHub, rim: true });
     f.position.set(x, 0, 4.1);
     g.add(f);
     return f;
@@ -666,6 +715,7 @@ function makeCase(M, kind, light) {
   g.add(rear);
 
   const fans = [rear];
+  const groups = { rear: [rear], bottom: [], front: [], rad: [] };
   if (kind === "hs420") {
     // HAVN signature handle, three angled floor intakes under a glass shelf
     mesh(new THREE.TorusGeometry(1.6, 0.35, 16, 32, Math.PI), M.frame, g).position.set(-X + 4, Y, -Z + 3);
@@ -675,7 +725,12 @@ function makeCase(M, kind, light) {
       f.position.set(x, 3.2, 4.5);
       g.add(f);
       fans.push(f);
+      groups.bottom.push(f);
     });
+    // Magnetic dust filter on the floor under the intakes
+    const filter = plane(2 * X - 4, 2 * Z - 4, new THREE.MeshStandardMaterial({ map: meshTex(light), metalness: 0.3, roughness: 0.6 }), 0, t + 0.02, 0, g);
+    filter.rotation.x = -Math.PI / 2;
+    filter.material.map.repeat.set(22, 14);
     box(2 * X - 2 * t, 0.2, 10, M.glassShelf, 0, 6.1, 9, g);
     plane(5, 1.1, new THREE.MeshStandardMaterial({ map: textTex(["HAVN"], { w: 512, h: 112, size: 72, fg: "#cfcfd6" }), transparent: true }), 0, t / 2, Z + 0.01, g);
   } else {
@@ -692,6 +747,7 @@ function makeCase(M, kind, light) {
       f.position.set(X - t - 1.5, y, 0);
       g.add(f);
       fans.push(f);
+      groups.front.push(f);
     });
   }
 
@@ -710,6 +766,7 @@ function makeCase(M, kind, light) {
   box(34, 2.7, 12.2, new THREE.MeshStandardMaterial({ map: finTex([12, 1]), metalness: 0.6, roughness: 0.4 }), 0, 0, 0, rad);
   box(2.8, 3.0, 12.6, M.gunmetal, -18.4, 0, 0, rad, 0.3);
   box(2.8, 3.0, 12.6, M.gunmetal, 18.4, 0, 0, rad, 0.3);
+  plane(2.2, 1.0, new THREE.MeshStandardMaterial({ map: textTex(["360"], { w: 256, h: 112, size: 70, fg: "#c9c9d2" }), transparent: true }), 18.4, 0, 6.31, rad);
   rad.position.set(-0.3, radY, (dims.tray + Z) / 2 + 0.5);
   g.add(rad);
   [-12.4, 0, 12.4].forEach((x) => {
@@ -718,9 +775,10 @@ function makeCase(M, kind, light) {
     f.position.set(x - 0.3, radY - 1.35 - 1.3, rad.position.z);
     g.add(f);
     fans.push(f);
+    groups.rad.push(f);
   });
 
-  g.userData = { dims, side, fans, radPort: V(17.6, radY - 1.6, rad.position.z + 4.2) };
+  g.userData = { dims, side, fans, groups, radY, radZ: rad.position.z, radPort: V(17.6, radY - 1.6, rad.position.z + 4.2) };
   return g;
 }
 
@@ -748,13 +806,17 @@ function buildScene(wrap, build, n) {
   scene.environmentIntensity = 0.55;
 
   const diffuserTex = rainbowTex(build.accent);
+  const brushed = brushedTex();
   const M = {
-    frame: std(build.caseColor || 0x121216, light ? 0.25 : 0.55, light ? 0.55 : 0.36),
+    frame: std(build.caseColor || 0x121216, light ? 0.25 : 0.55, light ? 0.55 : 0.42, { roughnessMap: brushed }),
     frameDark: std(light ? 0xd4d4da : 0x0d0d10, 0.4, 0.6),
     frit: std(0x050506, 0.2, 0.15),
-    gunmetal: std(0x2a2c32, 0.8, 0.3),
+    gunmetal: std(0x2a2c32, 0.8, 0.36, { roughnessMap: brushed }),
+    wire: std(0x111114, 0, 0.55),
+    usbCable: std(0x1f2a44, 0.1, 0.5),
+    paste: std(0x9a9ca3, 0.4, 0.55),
     silver: std(0xc8cbd2, 1, 0.24),
-    trim: std(0x9a9ca4, 1, 0.28),
+    trim: std(0x9a9ca4, 1, 0.32, { roughnessMap: brushed }),
     gold: std(0xd8aa45, 1, 0.3),
     copper: std(0xc7774a, 1, 0.28),
     plastic: std(0x0f0f12, 0, 0.55),
@@ -770,7 +832,7 @@ function buildScene(wrap, build, n) {
     substrate: std(0x24452e, 0.2, 0.5),
     ramSpreader: std(light ? 0xe6e6ec : 0x23252b, 0.8, 0.3),
     finBlock: new THREE.MeshStandardMaterial({ map: finTex([6, 3]), metalness: 0.7, roughness: 0.4 }),
-    shroud: std(build.caseModel === "hs420" ? 0x2d2f35 : 0x1d1d22, 0.75, 0.3),
+    shroud: std(build.caseModel === "hs420" ? 0x2d2f35 : 0x1d1d22, 0.75, 0.36, { roughnessMap: brushed }),
     shroudInner: std(0x0b0b0d, 0.2, 0.7),
     gpuBlade: std(0x18181c, 0.1, 0.45),
     gpuHub: std(0x2a2b31, 0.7, 0.3),
@@ -795,7 +857,7 @@ function buildScene(wrap, build, n) {
   scene.add(root);
   const pc = makeCase(M, build.caseModel, light);
   root.add(pc);
-  const { dims, side, fans, radPort } = pc.userData;
+  const { dims, side, fans, groups, radY, radZ, radPort } = pc.userData;
 
   // Motherboard: rear I/O flush to the rear wall, top just under the radiator
   const mb = makeMotherboard(M, build.caseModel === "hs420" ? "Z790 AORUS" : "Z890 TUF");
@@ -816,6 +878,21 @@ function buildScene(wrap, build, n) {
     root.add(sleeved([V(B.x - 10.0 + i * 1.9, B.y + 14.9, bz + 0.9), V(B.x - 10.0 + i * 1.9, B.y + 15.9, bz + 2.0), V(B.x - 10.6 + i * 1.9, B.y + 16.4, bz + 0.5), V(B.x - 11 + i * 1.9, B.y + 16.6, dims.tray - 0.5)], M, { cols: 4, rows: 2, gap: 0.4, r: 0.17, up: V(0, 1, 0), combs: [] }))
   );
 
+  // Fan + ARGB wiring daisy-chained between fans and run to the board headers
+  const wire = (pts, r = 0.12, mat = M.wire) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, r, 6), mat, root);
+  const header = (x, y) => V(B.x + x, B.y + y, bz + 0.7);
+  const chain = (pts, to) => [0, 0.32].forEach((o) => wire([...pts.map((q) => q.clone().add(V(0, o, o))), ...to.map((q) => q.clone().add(V(o, 0, 0)))]));
+  if (groups.bottom.length)
+    chain(groups.bottom.map((f) => f.position.clone().add(V(4.6, -1.4, -5.2))), [V(B.x + 7, 6.6, dims.tray + 0.8), header(5.6, -14.6)]);
+  if (groups.front.length)
+    chain(groups.front.slice().reverse().map((f) => f.position.clone().add(V(-1.4, -5.4, -5.4))), [V(B.x + 13.5, B.y - 13, dims.tray + 0.8), header(11.6, -1.2)]);
+  chain(groups.rad.map((f) => V(f.position.x + 5, radY - 3.4, radZ - 5.9)), [V(B.x + 1, B.y + 16.2, bz + 1.4), header(-0.2, 14.6)]);
+  const rf = groups.rear[0].position;
+  wire([V(rf.x + 1.4, rf.y + 6.2, rf.z - 3), V(rf.x + 2.4, B.y + 15.9, bz + 0.5), V(B.x - 2, B.y + 15.9, bz + 0.5), V(B.x + 7.5, B.y + 15.7, bz + 0.6), header(8.6, 14.6)]);
+  // Front-panel and USB 3 cables tucked under the board into the tray
+  wire([header(5.6, -14.6).add(V(0, 0, 0.2)), header(5.8, -15.8).add(V(0, 0, 0.6)), V(B.x + 7.5, B.y - 17.2, dims.tray + 0.5)], 0.22);
+  wire([header(-2.3, -14.4).add(V(0, 0, 0.3)), header(-2.3, -15.8).add(V(0, 0, 0.7)), V(B.x - 1.5, B.y - 17.4, dims.tray + 0.5)], 0.38, M.usbCable);
+
   // ----- parts that get installed -----
   const install = Object.fromEntries(build.install.map((p) => [p.key, p]));
 
@@ -823,6 +900,10 @@ function buildScene(wrap, build, n) {
   root.add(cpu);
   const cpuTo = { p: sock.clone().setZ(bz + 0.05), r: new THREE.Euler() };
   const cpuFrom = { p: sock.clone().add(V(2, 16, 14)), r: new THREE.Euler(0.9, 0.4, 1.2) };
+
+  const paste = mesh(new THREE.SphereGeometry(0.62, 24, 12), M.paste, root);
+  paste.scale.set(1, 1, 0.3);
+  paste.position.copy(sock).setZ(bz + 0.55);
 
   const pump = makePump(M, build.accent);
   root.add(pump);
@@ -875,6 +956,18 @@ function buildScene(wrap, build, n) {
     gpuTo = { p: V(B.x + 1.2, B.y - 4.3 - 0.6, bz + 1.1 + 6), r: new THREE.Euler(Math.PI / 2, 0, 0) };
   }
   const gpuFrom = { p: gpuTo.p.clone().add(V(10, -6, 34)), r: new THREE.Euler(gpuTo.r.x + 0.35, -0.7, 0.15) };
+  // Anti-sag stand under the far end of a horizontal card
+  let stand = null;
+  if (build.caseModel !== "hs420") {
+    stand = new THREE.Group();
+    const top = gpuTo.p.y - 5.2, base = 1.4 * 1.0 + 9.5;
+    const post = mesh(new THREE.CylinderGeometry(0.4, 0.4, top - base, 16), M.trim, stand);
+    post.position.y = (top + base) / 2;
+    mesh(new THREE.CylinderGeometry(1.4, 1.6, 0.4, 24), M.gunmetal, stand).position.y = base + 0.2;
+    mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.3, 24), M.plastic, stand).position.y = top - 0.15;
+    stand.position.set(gpuTo.p.x + 11, 0, gpuTo.p.z);
+    root.add(stand);
+  }
   // 12V-2x6 cable from the tray grommet into the card's power connector
   gpu.position.copy(gpuTo.p);
   gpu.quaternion.setFromEuler(gpuTo.r);
@@ -888,6 +981,7 @@ function buildScene(wrap, build, n) {
   const floor = new THREE.Mesh(new THREE.CircleGeometry(150, 64), new THREE.MeshStandardMaterial({ color: 0x0c0b10, roughness: 0.25, metalness: 0.6, transparent: true, alphaMap: fadeTex(), envMapIntensity: 0.5 }));
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.82;
+  floor.userData.noAO = true;
   root.add(floor);
   const shadowFloor = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.ShadowMaterial({ opacity: 0.55 }));
   shadowFloor.rotation.x = -Math.PI / 2;
@@ -926,6 +1020,12 @@ function buildScene(wrap, build, n) {
   const camera = new THREE.PerspectiveCamera(28, 1, 1, 800);
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  if (!mobile) {
+    const ao = new GlassAwareGTAOPass(scene, camera, 512, 512);
+    ao.updateGtaoMaterial({ radius: 2.4, distanceExponent: 1.2, thickness: 1.4, scale: 1 });
+    ao.blendIntensity = 0.85;
+    composer.addPass(ao);
+  }
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.45, 0.4, light ? 1.6 : 1.05);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -1018,6 +1118,11 @@ function buildScene(wrap, build, n) {
     pose(cpu, cpuFrom, cpuTo, tc);
     mb.userData.lever.rotation.y = -1.3 * (1 - easeInOut(seg(p, T.lever)));
 
+    // A pea-sized dot of thermal paste goes on before the cooler
+    const tpa = seg(p, T.paste);
+    paste.visible = tpa > 0;
+    paste.scale.set(tpa, tpa, 0.3 * tpa);
+
     // AIO pump moves from where it was hanging onto the CPU
     const tp = easeInOut(seg(p, T.pump));
     if (tp !== lastPump) {
@@ -1052,6 +1157,7 @@ function buildScene(wrap, build, n) {
     gpu.visible = tg > 0;
     pose(gpu, gpuFrom, gpuTo, tg);
     gpuCable.visible = p >= T.gpuCable[0] + 0.01;
+    if (stand) stand.visible = p >= T.gpu[1];
 
     // Power on
     power = easeInOut(seg(p, T.power));
@@ -1060,6 +1166,7 @@ function buildScene(wrap, build, n) {
     M.diffuser.emissiveIntensity = power * 2.2;
     M.fanBlade.emissiveIntensity = power * 0.18;
     M.led.emissiveIntensity = power * 2;
+    mb.userData.qcode.emissiveIntensity = power * 2.2;
     gpu.userData.logo.material.emissiveIntensity = power * 0.9;
     inner.forEach((l) => (l.intensity = power * (light ? 35 : 70)));
     kicker.intensity = power * (light ? 400 : 1400);
