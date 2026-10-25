@@ -107,7 +107,7 @@ window.CONTENT = {
   ],
 
   drumming: {
-    blurb: "My cover of \"Beggin'\" on my Mapex Venus kit, played with an extra heavy kick.",
+    blurb: "",
     // A local .mp4 in assets/ or a YouTube embed URL ("https://www.youtube.com/embed/VIDEO_ID")
     video: "assets/beggin-drum-cover.mp4",
     poster: "assets/beggin-poster.jpg",

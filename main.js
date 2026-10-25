@@ -79,7 +79,7 @@
       ${d.videoTitle ? `<p class="video-title">${esc(d.videoTitle)}</p>` : ""}
     </div>
     <div class="drum-info" data-reveal>
-      <p>${esc(d.blurb)}</p>
+      ${d.blurb ? `<p>${esc(d.blurb)}</p>` : ""}
       <ul class="kit">${d.kit.map((k, i) => `<li>${esc(k)}<span>0${i + 1}</span></li>`).join("")}</ul>
     </div>`;
 
