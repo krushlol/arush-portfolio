@@ -20,9 +20,79 @@
   $("#settle-intro").textContent = C.settleIntro;
 
   // ---------- Sections ----------
+  // ---------- About: bento ----------
+  const A = C.about;
+  const initials = C.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2);
+  const ICONS = {
+    Basketball: `<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="19"/><path d="M5 24h38M24 5v38M10.5 10.5c7 6 7 21 0 27M37.5 10.5c-7 6-7 21 0 27"/></svg>`,
+    "Ping pong": `<svg viewBox="0 0 48 48"><circle cx="20" cy="20" r="14"/><path d="M30 30l11 11"/><circle cx="38" cy="12" r="3.5"/></svg>`,
+    Tennis: `<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="19"/><path d="M7 15c9 4 9 14 0 18M41 15c-9 4-9 14 0 18"/></svg>`,
+  };
+  // whoami.ts, syntax-highlighted
+  const str = (v) => `<span class="tk-s">"${esc(v)}"</span>`;
+  const val = (v) => (Array.isArray(v) ? `[${v.map(str).join(", ")}]` : str(v));
+  // Long arrays wrap three items per line, like formatted code
+  const prop = (k, v) => {
+    const key = `  <span class="tk-p">${esc(k)}</span>: `;
+    if (!Array.isArray(v) || v.length <= 3) return [`${key}${val(v)},`];
+    const rows = [];
+    for (let i = 0; i < v.length; i += 3) rows.push(`    ${v.slice(i, i + 3).map(str).join(", ")},`);
+    return [`${key}[`, ...rows, "  ],"];
+  };
+  const codeLines = [
+    `<span class="tk-k">const</span> <span class="tk-v">arush</span> = {`,
+    ...Object.entries(A.code).flatMap(([k, v]) => prop(k, v)),
+    `} <span class="tk-k">as const</span>;`,
+  ];
   $("#about-body").innerHTML = `
-    <p class="about-bio" data-reveal>${esc(C.about.bio)}</p>
-    <dl class="facts" data-reveal>${C.about.facts.map((f) => `<div><dt>${esc(f.k)}</dt><dd>${esc(f.v)}</dd></div>`).join("")}</dl>`;
+    <div class="about-grid">
+      <article class="ab-card ab-profile" data-spot data-reveal style="--neon:var(--n-purple)">
+        <div class="ab-id">
+          <div class="avatar">${A.photo ? `<img src="${esc(A.photo)}" alt="${esc(C.name)}">` : `<span>${esc(initials)}</span>`}</div>
+          <div>
+            <p class="ab-name">${esc(C.name)}</p>
+            <p class="ab-roles">${A.roles.map(esc).join(" <i>/</i> ")}</p>
+          </div>
+        </div>
+        <h3 class="ab-headline">${esc(A.headline)}</h3>
+        <p class="ab-bio">${esc(A.bio)}</p>
+        <div class="ab-meta">${A.meta.map((m) => `<span>${esc(m)}</span>`).join("")}</div>
+      </article>
+
+      <div class="ab-stats">
+        ${A.stats.map((st, i) => `<article class="ab-card ab-stat" data-spot data-reveal style="--neon:${["var(--n-cyan)", "var(--n-purple)", "var(--n-pink)", "var(--n-green)"][i % 4]}"><b data-count="${st.v}">${st.v}</b><span>${esc(st.k)}</span></article>`).join("")}
+      </div>
+
+      <article class="ab-card ab-code" data-spot data-reveal style="--neon:var(--n-cyan)">
+        <div class="code-bar"><i></i><i></i><i></i><span>whoami.ts</span></div>
+        <pre class="code"><code>${codeLines.map((l, i) => `<span class="cl" style="--i:${i}"><em>${i + 1}</em>${l}</span>`).join("")}</code></pre>
+      </article>
+
+      <article class="ab-card ab-solved" data-spot data-reveal style="--neon:var(--n-pink)">
+        <p class="ab-label">// problems I've solved · CarAdvisor</p>
+        <ol>${A.solved.map((x) => `<li><p class="sv-p">${esc(x.problem)}</p><p class="sv-f">${esc(x.fix)}</p></li>`).join("")}</ol>
+      </article>
+
+      <article class="ab-card ab-toolkit" data-spot data-reveal style="--neon:var(--n-purple)">
+        <p class="ab-label">// toolkit</p>
+        ${A.toolkit.map((g) => `<div class="tk-group"><span>${esc(g.group)}</span><div class="chips">${g.items.map((x) => `<span>${esc(x)}</span>`).join("")}</div></div>`).join("")}
+      </article>
+
+      <article class="ab-card ab-sports" data-spot data-reveal style="--neon:var(--n-green)">
+        <p class="ab-label">// off the court</p>
+        <div class="sports">${A.sports.map((x) => `<div class="sport">${ICONS[x] || ""}<span>${esc(x)}</span></div>`).join("")}</div>
+      </article>
+    </div>
+    <div class="marquee" aria-hidden="true"><div class="marquee-track">${[...A.marquee, ...A.marquee].map((x) => `<span>${esc(x)}</span>`).join("")}</div></div>`;
+
+  // Cursor-following glow on cards
+  document.addEventListener("pointermove", (e) => {
+    const card = e.target.closest?.("[data-spot]");
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    card.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    card.style.setProperty("--my", `${e.clientY - r.top}px`);
+  });
 
   $("#build-list").innerHTML = C.pcBuilds
     .map(
@@ -102,7 +172,7 @@
   // ---------- Hero: floating cards of real work ----------
   const rig = C.pcBuilds[0], mom = C.pcBuilds[1], site = C.webDesign[0];
   const part = (b, k, f = "name") => b?.install.find((p) => p.key === k)?.[f] || "";
-  const plays = (C.about.facts.find((f) => f.k === "Plays")?.v || "").split("·").map((x) => x.trim()).filter(Boolean);
+  const plays = C.about.sports;
   const eq = Array.from({ length: 16 }, (_, i) => `<i style="animation-duration:${(0.45 + ((i * 37) % 9) / 14).toFixed(2)}s;animation-delay:-${((i * 53) % 10) / 10}s"></i>`).join("");
   const HERO = [
     {
@@ -261,6 +331,11 @@
     gsap.utils.toArray("[data-reveal]").forEach((el) =>
       gsap.from(el, { y: 60, opacity: 0, duration: 1.1, ease: "power3.out", scrollTrigger: { trigger: el, start: "top 88%" } })
     );
+    gsap.utils.toArray("[data-count]").forEach((el) => {
+      const n = { v: 0 };
+      gsap.to(n, { v: +el.dataset.count, duration: 1.6, ease: "power2.out", scrollTrigger: { trigger: el, start: "top 90%" }, onUpdate: () => (el.textContent = Math.round(n.v)) });
+    });
+    gsap.from(".ab-code .cl", { opacity: 0, x: -8, duration: 0.4, stagger: 0.12, ease: "power2.out", scrollTrigger: { trigger: ".ab-code", start: "top 80%" } });
     gsap.utils.toArray(".media img, .browser .media").forEach((el) =>
       gsap.fromTo(el, { yPercent: -4 }, { yPercent: 4, ease: "none", scrollTrigger: { trigger: el, scrub: true } })
     );
