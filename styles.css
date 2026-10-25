@@ -129,12 +129,13 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.2rem); }
 }
 .settle-copy { opacity: 0; pointer-events: none; width: min(34vw, 460px); }
 .hero-name {
-  font-size: clamp(3rem, 7.4vw, 7.4rem); line-height: 0.9; letter-spacing: -0.035em; font-weight: 700;
+  font-size: clamp(2.6rem, 6vw, 6.4rem); line-height: 0.92; letter-spacing: -0.035em; font-weight: 700;
+  filter: drop-shadow(0 0 26px color-mix(in srgb, var(--n-purple) 40%, transparent));
 }
+.hero-copy { width: min(48vw, 720px); }
 .hero-name .w {
   background: linear-gradient(100deg, #ffffff 0%, #e6dcff 35%, var(--n-purple) 70%, var(--n-cyan) 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
-  text-shadow: 0 0 34px color-mix(in srgb, var(--n-purple) 40%, transparent);
 }
 .hero-role { margin-top: 22px; font-family: var(--mono); font-size: clamp(1rem, 1.6vw, 1.35rem); color: var(--muted); }
 .role-word { color: var(--neon, var(--n-purple)); text-shadow: 0 0 18px var(--neon, var(--n-purple)); font-weight: 500; display: inline-block; }
