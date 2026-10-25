@@ -1,13 +1,15 @@
 // Real-time 3D PC assembly. Units are centimetres, modelled to real part sizes.
 // Each .rig3d canvas reads its scroll progress from window.PC_PROGRESS[n] (set by main.js).
 import * as THREE from "three";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
+import { BokehPass } from "three/addons/postprocessing/BokehPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 
 // Ambient occlusion that ignores glass and other see-through surfaces, so it shades the parts inside
 class GlassAwareGTAOPass extends GTAOPass {
@@ -58,6 +60,9 @@ function mesh(geo, mat, parent, shadow = true) {
 }
 
 function box(w, h, d, mat, x = 0, y = 0, z = 0, parent, r = 0) {
+  // Nothing real has perfectly sharp edges: give every chunky box a small bevel to catch highlights
+  const thin = Math.min(w, h, d);
+  if (r === 0 && thin >= 0.25) r = Math.min(0.06, thin * 0.15);
   const geo = r > 0 ? new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2, h / 2, d / 2)) : new THREE.BoxGeometry(w, h, d);
   const m = mesh(geo, mat, parent);
   m.position.set(x, y, z);
@@ -95,6 +100,9 @@ function rrShape(w, h, r) {
   return s;
 }
 
+// Mark a texture to also be used as a bump map (applied to every material using it as `map`)
+const bumpy = (t, scale) => ((t.userData.bump = scale), t);
+
 function canvasTex(w, h, draw, repeat) {
   const c = document.createElement("canvas");
   c.width = w;
@@ -120,7 +128,7 @@ const PX = 25; // pixels per cm on the motherboard texture
 const HOLES = [[0.6, 1.0], [23.0, 1.0], [0.6, 15], [23.0, 15], [0.6, 29.5], [23.0, 29.5], [11.5, 1.0], [11.5, 29.5], [16.5, 15]];
 
 function boardTexture(label) {
-  return canvasTex(24.4 * PX, 30.5 * PX, (g, w, h) => {
+  return bumpy(canvasTex(24.4 * PX, 30.5 * PX, (g, w, h) => {
     g.fillStyle = "#141519";
     g.fillRect(0, 0, w, h);
     const r = rng(7);
@@ -164,7 +172,7 @@ function boardTexture(label) {
     g.lineWidth = 1.5;
     g.strokeRect(4.0 * PX, 15.9 * PX, 8.6 * PX, 2.6 * PX);
     g.strokeRect(6.8 * PX, 3.5 * PX, 6.0 * PX, 6.6 * PX);
-  });
+  }), 0.25);
 }
 
 function textTex(lines, { w = 512, h = 128, bg = null, fg = "#fff", size = 54, weight = 700, font = '"Space Grotesk", sans-serif' } = {}) {
@@ -185,14 +193,14 @@ function textTex(lines, { w = 512, h = 128, bg = null, fg = "#fff", size = 54, w
 }
 
 const finTex = (rep = [1, 1]) =>
-  canvasTex(256, 64, (g, w, h) => {
+  bumpy(canvasTex(256, 64, (g, w, h) => {
     g.fillStyle = "#202228";
     g.fillRect(0, 0, w, h);
     for (let x = 0; x < w; x += 4) {
       g.fillStyle = x % 8 ? "#646873" : "#3a3d45";
       g.fillRect(x, 0, 2, h);
     }
-  }, rep);
+  }, rep), 1.2);
 
 // Brushed-aluminium streaks, used as a roughness map on metal
 const brushedTex = () =>
@@ -201,11 +209,11 @@ const brushedTex = () =>
     g.fillRect(0, 0, w, h);
     const r = rng(11);
     for (let i = 0; i < 900; i++) {
-      const v = 150 + Math.floor(r() * 105);
-      g.fillStyle = `rgba(${v},${v},${v},0.35)`;
+      const v = 170 + Math.floor(r() * 85);
+      g.fillStyle = `rgba(${v},${v},${v},0.16)`;
       g.fillRect(0, r() * h, w, 1);
     }
-  }, [3, 3]);
+  }, [6, 6]);
 
 // Two-digit debug code display ("A0" = booted OK on Intel boards)
 const qcodeTex = () =>
@@ -220,7 +228,7 @@ const qcodeTex = () =>
   });
 
 const meshTex = (light) =>
-  canvasTex(128, 128, (g, w, h) => {
+  bumpy(canvasTex(128, 128, (g, w, h) => {
     g.fillStyle = light ? "#dcdce2" : "#18181d";
     g.fillRect(0, 0, w, h);
     g.fillStyle = light ? "#8d8d96" : "#030304";
@@ -230,10 +238,10 @@ const meshTex = (light) =>
         g.arc(x + 2, y + 4, 2.6, 0, Math.PI * 2);
         g.fill();
       }
-  }, [14, 7]);
+  }, [14, 7]), 1.5);
 
 const weaveTex = (base, hi, rep) =>
-  canvasTex(64, 64, (g, w, h) => {
+  bumpy(canvasTex(64, 64, (g, w, h) => {
     g.fillStyle = base;
     g.fillRect(0, 0, w, h);
     g.strokeStyle = hi;
@@ -250,7 +258,7 @@ const weaveTex = (base, hi, rep) =>
       g.stroke();
       g.globalAlpha = 1;
     }
-  }, rep);
+  }, rep), 1.6);
 
 function ihsTex(cpuName) {
   const ultra = /ultra/i.test(cpuName);
@@ -371,6 +379,43 @@ const fadeTex = () =>
     g.fillStyle = grd;
     g.fillRect(0, 0, w, h);
   });
+
+// ---------- studio environment ----------
+// A dark room with glowing softboxes, captured as the reflection map: gives metal and glass
+// the long clean highlights you see in product photography
+function studioEnv(renderer) {
+  const env = new THREE.Scene();
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100), new THREE.MeshBasicMaterial({ color: 0x0a0a0d, side: THREE.BackSide })));
+  const softbox = (w, h, color, power, pos) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(power), side: THREE.DoubleSide }));
+    m.position.copy(pos);
+    m.lookAt(0, 0, 0);
+    env.add(m);
+  };
+  softbox(42, 42, 0xffffff, 6, V(0, 46, 4));
+  softbox(12, 54, 0xfff1e4, 5, V(40, 6, 30));
+  softbox(12, 54, 0xdde5ff, 3.5, V(-44, 6, 14));
+  softbox(64, 5, 0xffffff, 2.5, V(0, 8, -46));
+  softbox(30, 4, 0xffffff, 2, V(0, -20, 40));
+  const pm = new THREE.PMREMGenerator(renderer);
+  const tex = pm.fromScene(env, 0.02).texture;
+  pm.dispose();
+  return tex;
+}
+
+// Subtle vignette + film grain, applied last
+const FilmShader = {
+  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uVig: { value: 0.32 }, uGrain: { value: 0.03 } },
+  vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uTime, uVig, uGrain; varying vec2 vUv;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uTime) * 43758.5453); }
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      c.rgb *= 1.0 - uVig * smoothstep(0.35, 0.9, distance(vUv, vec2(0.5)));
+      c.rgb += (hash(vUv * 1024.0) - 0.5) * uGrain;
+      gl_FragColor = c;
+    }`,
+};
 
 // ---------- shared geometry ----------
 const bladeCache = new Map();
@@ -801,14 +846,13 @@ function buildScene(wrap, build, n) {
 
   const scene = new THREE.Scene();
   scene.background = bgTex(build.accent);
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.55;
+  scene.environment = studioEnv(renderer);
+  scene.environmentIntensity = 0.7;
 
   const diffuserTex = rainbowTex(build.accent);
   const brushed = brushedTex();
   const M = {
-    frame: std(build.caseColor || 0x121216, light ? 0.25 : 0.55, light ? 0.55 : 0.42, { roughnessMap: brushed }),
+    frame: new THREE.MeshPhysicalMaterial({ color: build.caseColor || 0x121216, metalness: light ? 0.25 : 0.6, roughness: light ? 0.5 : 0.38, roughnessMap: brushed, anisotropy: light ? 0 : 0.6, clearcoat: light ? 0.35 : 0.1, clearcoatRoughness: 0.3 }),
     frameDark: std(light ? 0xd4d4da : 0x0d0d10, 0.4, 0.6),
     frit: std(0x050506, 0.2, 0.15),
     gunmetal: std(0x2a2c32, 0.8, 0.36, { roughnessMap: brushed }),
@@ -830,18 +874,19 @@ function buildScene(wrap, build, n) {
     pcb: std(0x16301f, 0.2, 0.55),
     pcbGreen: std(0x1c3d2b, 0.2, 0.5),
     substrate: std(0x24452e, 0.2, 0.5),
-    ramSpreader: std(light ? 0xe6e6ec : 0x23252b, 0.8, 0.3),
+    ramSpreader: new THREE.MeshPhysicalMaterial({ color: light ? 0xe6e6ec : 0x23252b, metalness: 0.85, roughness: 0.3, roughnessMap: brushed, anisotropy: 0.7 }),
     finBlock: new THREE.MeshStandardMaterial({ map: finTex([6, 3]), metalness: 0.7, roughness: 0.4 }),
-    shroud: std(build.caseModel === "hs420" ? 0x2d2f35 : 0x1d1d22, 0.75, 0.36, { roughnessMap: brushed }),
+    shroud: new THREE.MeshPhysicalMaterial({ color: build.caseModel === "hs420" ? 0x2d2f35 : 0x1d1d22, metalness: 0.75, roughness: 0.34, roughnessMap: brushed, anisotropy: 0.5, clearcoat: 0.5, clearcoatRoughness: 0.2 }),
     shroudInner: std(0x0b0b0d, 0.2, 0.7),
     gpuBlade: std(0x18181c, 0.1, 0.45),
     gpuHub: std(0x2a2b31, 0.7, 0.3),
-    fanFrame: std(light ? 0xf2f2f5 : 0x18181c, 0.1, 0.5),
+    fanFrame: new THREE.MeshPhysicalMaterial({ color: light ? 0xf2f2f5 : 0x18181c, metalness: 0.05, roughness: 0.45, clearcoat: 0.4, clearcoatRoughness: 0.35 }),
     fanPad: std(light ? 0xc9c9cf : 0x0a0a0c, 0, 0.8),
     fanHub: std(light ? 0xf5f5f8 : 0x202024, 0.1, 0.45),
     fanSticker: new THREE.MeshStandardMaterial({ map: textTex(["◆"], { w: 128, h: 128, size: 70, bg: light ? "#f2f2f5" : "#16161a", fg: "#888" }) }),
-    fanBlade: std(0xe8e9ee, 0, 0.35, { transparent: true, opacity: 0.9, emissive: accent, emissiveIntensity: 0 }),
-    pumpBody: std(0x18181c, 0.6, 0.35),
+    // A sheen fakes the frosted, light-diffusing plastic of RGB fan blades
+    fanBlade: new THREE.MeshPhysicalMaterial({ color: 0xc9cad0, roughness: 0.45, sheen: 0.3, sheenColor: 0xffffff, emissive: accent, emissiveIntensity: 0 }),
+    pumpBody: new THREE.MeshPhysicalMaterial({ color: 0x18181c, metalness: 0.6, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.15 }),
     sleeve: new THREE.MeshStandardMaterial({ map: weaveTex(light ? "#e8e8ee" : "#151518", light ? "#ffffff" : "#2c2c33", [1, 30]), roughness: 0.75 }),
     braid: new THREE.MeshStandardMaterial({ map: weaveTex("#101013", "#3a3a44", [1, 60]), roughness: 0.6, metalness: 0.2 }),
     comb: std(light ? 0xffffff : 0x1a1a1e, 0, 0.4),
@@ -849,7 +894,7 @@ function buildScene(wrap, build, n) {
     glowBar: std(0xdedee6, 0, 0.35, { emissive: accent, emissiveIntensity: 0 }),
     diffuser: new THREE.MeshStandardMaterial({ color: 0xa8a8b0, roughness: 0.35, emissive: 0xffffff, emissiveMap: diffuserTex, emissiveIntensity: 0 }),
     led: std(0x333333, 0, 0.4, { emissive: 0xffffff, emissiveIntensity: 0 }),
-    glass: new THREE.MeshPhysicalMaterial({ color: 0x9fb0ad, metalness: 0, roughness: 0.02, transparent: true, opacity: 0.03, depthWrite: false, envMapIntensity: 0.6, specularIntensity: 0.6 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0x9fb0ad, metalness: 0, roughness: 0.02, transparent: true, opacity: 0.035, depthWrite: false, envMapIntensity: 0.7, specularIntensity: 0.7 }),
     glassShelf: new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.1, transparent: true, opacity: 0.16, depthWrite: false }),
   };
 
@@ -989,12 +1034,31 @@ function buildScene(wrap, build, n) {
   shadowFloor.receiveShadow = true;
   root.add(shadowFloor);
 
+  root.traverse((o) => {
+    const m = o.material;
+    if (!m || Array.isArray(m)) return;
+    if (m === M.glass || m === M.glassShelf) o.userData.noAO = true;
+    if (m.map?.userData.bump && !m.bumpMap) {
+      m.bumpMap = m.map;
+      m.bumpScale = m.map.userData.bump;
+      m.needsUpdate = true;
+    }
+  });
+
   // Lighting
+  if (!mobile) {
+    // Big soft area light, like a softbox above and in front of the case
+    RectAreaLightUniformsLib.init();
+    const soft = new THREE.RectAreaLight(0xfff3e8, 4.5, 70, 34);
+    soft.position.set(25, 80, 70);
+    soft.lookAt(0, 20, 0);
+    scene.add(soft);
+  }
   scene.add(new THREE.HemisphereLight(0xc8ccff, 0x0e0e14, 0.45));
   const key = new THREE.DirectionalLight(0xfff1e2, 2.4);
   key.position.set(45, 85, 70);
   key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.mapSize.set(mobile ? 1024 : 2048, mobile ? 1024 : 2048);
   Object.assign(key.shadow.camera, { left: -50, right: 50, top: 65, bottom: -15, near: 10, far: 240 });
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.04;
@@ -1027,8 +1091,13 @@ function buildScene(wrap, build, n) {
     composer.addPass(ao);
   }
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.45, 0.4, light ? 1.6 : 1.05);
+  // Shallow depth of field on the close-ups, like a macro lens
+  const dof = mobile ? null : new BokehPass(scene, camera, { focus: 100, aperture: 0, maxblur: 0.006 });
+  if (dof) composer.addPass(dof);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
+  const film = new ShaderPass(FilmShader);
+  composer.addPass(film);
 
   // Camera shots: [progress, target, direction, distance]
   const center = V(0, dims.y / 2, 0);
@@ -1110,7 +1179,7 @@ function buildScene(wrap, build, n) {
     const off = easeInOut(seg(p, T.panelOff)) * (1 - easeInOut(seg(p, T.panelOn)));
     side.position.set(off * 58, off * 4, dims.z - 0.2 + off * 12);
     side.visible = off < 0.98;
-    work.intensity = off * 260;
+    work.intensity = off * 170;
 
     // CPU drops into the socket, the retention arm closes
     const tc = easeOut(seg(p, T.cpu));
@@ -1210,6 +1279,14 @@ function buildScene(wrap, build, n) {
     pitch = Math.max(-0.6, Math.min(1.1, pitch));
     placeCamera(p, yaw, pitch);
     updateCallout(p, W, H);
+    if (dof) {
+      const dist = camera.position.distanceTo(camTarget);
+      const close = clamp01((85 - dist) / 40);
+      dof.enabled = close > 0.02;
+      dof.uniforms.focus.value = dist;
+      dof.uniforms.aperture.value = 0.00045 * close;
+    }
+    film.uniforms.uTime.value = (now / 1000) % 100;
     composer.render();
     if (visible && !reduce) raf = requestAnimationFrame(frame);
   }
