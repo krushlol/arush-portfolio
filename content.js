@@ -15,8 +15,8 @@ window.CONTENT = {
     { v: "17", k: "years old" },
   ],
 
-  settleLines: ["Everything", "I make."],
-  settleIntro: "Pick anything to jump straight to it.",
+  settleLines: ["Built, shipped,", "played."],
+  settleIntro: "Two custom PCs, a live web platform and a drum cover. Choose one to see how it came together.",
 
   about: {
     bio: "I'm Arush, a senior at Irvington High in Fremont, and I learn by building. I like to take a system apart until I understand it, then make something of my own. That curiosity has led me to hand-build two PCs, one for my mom, and to design and ship CarAdvisor, a full-stack car research platform with an AI assistant that I've refined across 172 commits. When I'm not at a keyboard, I'm behind a drum kit or on the court playing basketball, ping pong or tennis.",
