@@ -59,11 +59,18 @@ function mesh(geo, mat, parent, shadow = true) {
   return m;
 }
 
+// Identical boxes (fins, chokes, slots, screws...) share one geometry
+const boxCache = new Map();
 function box(w, h, d, mat, x = 0, y = 0, z = 0, parent, r = 0) {
   // Nothing real has perfectly sharp edges: give every chunky box a small bevel to catch highlights
   const thin = Math.min(w, h, d);
   if (r === 0 && thin >= 0.25) r = Math.min(0.06, thin * 0.15);
-  const geo = r > 0 ? new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2, h / 2, d / 2)) : new THREE.BoxGeometry(w, h, d);
+  const key = `${w}|${h}|${d}|${r}`;
+  let geo = boxCache.get(key);
+  if (!geo) {
+    geo = r > 0 ? new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2, h / 2, d / 2)) : new THREE.BoxGeometry(w, h, d);
+    boxCache.set(key, geo);
+  }
   const m = mesh(geo, mat, parent);
   m.position.set(x, y, z);
   return m;
@@ -452,7 +459,7 @@ function makeFan(size, M, { frame = true, ring = true, blades = M.fanBlade, coun
     [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sy]) => box(size * 0.16, size * 0.16, depth + 0.1, M.fanPad, sx * size * 0.42, sy * size * 0.42, 0, g, 0.15));
     for (let i = 0; i < 3; i++) {
       const strut = box(r, size * 0.025, size * 0.03, M.fanFrame, 0, 0, -depth / 2 + 0.1, g);
-      strut.geometry.translate(r * 0.5, 0, 0);
+      strut.geometry = strut.geometry.clone().translate(r * 0.5, 0, 0); // own copy: box geometries are shared
       strut.rotation.z = (i / 3) * Math.PI * 2 + 0.5;
     }
     [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sy]) => cylZ(size * 0.018, 0.12, M.silver, sx * size * 0.42, sy * size * 0.42, depth / 2 + 0.11, g, 10));
@@ -1349,13 +1356,17 @@ function buildScene(wrap, build, n) {
     kick();
   });
   resize();
-  // Compile every shader now, while the page is idle, so the first visible frame doesn't hitch
+  // Compile every shader in parallel (off the main thread where the browser supports it) so neither
+  // the page nor the first visible frame stalls; never wait more than 2.5s for it
   apply(1);
   placeCamera(0, 0, 0);
-  renderer.compile(scene, camera);
-  apply(reduce ? 1 : window.PC_PROGRESS?.[n] ?? 0);
-  wrap.classList.add("ready");
-  kick();
+  const done = () => {
+    if (wrap.classList.contains("ready")) return;
+    apply(reduce ? 1 : window.PC_PROGRESS?.[n] ?? 0);
+    wrap.classList.add("ready");
+    kick();
+  };
+  return Promise.race([renderer.compileAsync(scene, camera).catch(() => {}), new Promise((r) => setTimeout(r, 2500))]).then(done);
 }
 
 function hasWebGL() {
@@ -1368,26 +1379,34 @@ function hasWebGL() {
 }
 
 if (hasWebGL()) {
-  // Build both scenes in the background soon after load, one per idle slot, so they're ready
-  // before anyone scrolls down; getting close to one builds it immediately. Waits for fonts
-  // so the canvas-drawn labels use Space Grotesk / Inter.
+  // Waits for fonts so the canvas-drawn labels use Space Grotesk / Inter
   const wraps = [...document.querySelectorAll(".rig-wrap")];
   const built = new Set();
   const idle = (fn) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 200));
+  let queue = Promise.resolve();
   const build = (wrap) => {
-    if (built.has(wrap)) return;
+    if (built.has(wrap)) return queue;
     built.add(wrap);
     const n = +wrap.querySelector(".rig3d").dataset.build;
-    buildScene(wrap, C.pcBuilds[n], n);
+    return (queue = queue.then(() => buildScene(wrap, C.pcBuilds[n], n)));
   };
-  document.fonts.ready.then(() => {
+  // Start only after the intro has played (or as soon as the visitor starts scrolling), then build
+  // one scene per idle slot so the page never freezes; getting close to a scene builds it right away
+  let started = false;
+  const start = () => {
+    if (started) return;
+    started = true;
+    removeEventListener("scroll", onScroll);
     const next = () => {
       const w = wraps.find((x) => !built.has(x));
-      if (!w) return;
-      build(w);
-      idle(next);
+      if (w) build(w).then(() => idle(next));
     };
     idle(next);
+  };
+  const onScroll = () => scrollY > innerHeight * 0.4 && start();
+  document.fonts.ready.then(() => {
+    addEventListener("scroll", onScroll, { passive: true });
+    setTimeout(start, 3500);
     const io = new IntersectionObserver((entries) => entries.forEach((e) => e.isIntersecting && build(e.target)), { rootMargin: "100% 0px" });
     wraps.forEach((w) => io.observe(w));
   });
