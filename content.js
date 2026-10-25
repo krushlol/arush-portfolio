@@ -83,12 +83,12 @@ window.CONTENT = {
   ],
 
   drumming: {
-    blurb: "My cover of \"Beggin'\", played with an extra heavy kick. [Add a line about how long you've played and what you like to play.]",
+    blurb: "My cover of \"Beggin'\" on my Mapex Venus kit, played with an extra heavy kick.",
     // A local .mp4 in assets/ or a YouTube embed URL ("https://www.youtube.com/embed/VIDEO_ID")
     video: "assets/beggin-drum-cover.mp4",
     poster: "assets/beggin-poster.jpg",
     videoTitle: "Beggin' — Drum Cover",
-    kit: ["[Kit / shell pack]", "[Snare]", "[Cymbals]", "[Pedal]"],
-    cardTitles: ["Beggin' Cover", "[Groove practice]", "[Live set]", "[Drum kit]"],
+    kit: ["Mapex Venus drum kit", "Red finish, chrome hardware"],
+    cardTitles: ["Beggin' Cover", "Mapex Venus"],
   },
 };
