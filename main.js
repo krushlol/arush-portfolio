@@ -238,13 +238,6 @@
 
   // ---------- Scroll wiring ----------
   gsap.registerPlugin(ScrollTrigger);
-  let lenis = null;
-  if (!reduce && window.Lenis) {
-    lenis = new Lenis({ lerp: 0.09 });
-    lenis.on("scroll", ScrollTrigger.update);
-    gsap.ticker.add((t) => lenis.raf(t * 1000));
-    gsap.ticker.lagSmoothing(0);
-  }
 
   if (!reduce) {
     heroST = ScrollTrigger.create({
@@ -310,7 +303,7 @@
   const load3d = () => import("./pc3d.js");
   addEventListener("load", () => ("requestIdleCallback" in window ? requestIdleCallback(load3d, { timeout: 2500 }) : setTimeout(load3d, 1200)));
 
-  // Anchor links go through Lenis so the scroll stays smooth
+  // Anchor links scroll smoothly with the browser's native scrolling
   document.addEventListener("click", (e) => {
     const a = e.target.closest('a[href^="#"]');
     if (!a) return;
@@ -318,8 +311,7 @@
     const target = id === "#top" ? 0 : $(id);
     if (target === null) return;
     e.preventDefault();
-    if (lenis) lenis.scrollTo(target, { offset: id === "#top" ? 0 : -40, duration: 1.4 });
-    else if (target === 0) scrollTo({ top: 0 });
-    else target.scrollIntoView();
+    const behavior = reduce ? "auto" : "smooth";
+    scrollTo({ top: target === 0 ? 0 : target.getBoundingClientRect().top + scrollY - 40, behavior });
   });
 })();

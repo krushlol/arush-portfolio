@@ -1293,7 +1293,7 @@ function buildScene(wrap, build, n) {
     if (med > 24 && tier > 0) {
       maxTier = tier - 1;
       setTier(tier - 1);
-    } else if (med < 18 && tier < maxTier && performance.now() - lastTierChange > 4000 && ++goodWindows >= 2) {
+    } else if (med < 18 && tier < maxTier && performance.now() - lastTierChange > 3000 && ++goodWindows >= 2) {
       setTier(tier + 1);
     }
   }
@@ -1413,7 +1413,7 @@ function buildScene(wrap, build, n) {
     kick();
   });
   resize();
-  setTier(mobile ? 0 : 1);
+  setTier(0); // start light; climbs only after this machine proves it can keep up
   // Compile every shader in parallel (off the main thread where the browser supports it) so neither
   // the page nor the first visible frame stalls; never wait more than 2.5s for it
   apply(1);
@@ -1440,7 +1440,7 @@ if (hasWebGL()) {
   // Waits for fonts so the canvas-drawn labels use Space Grotesk / Inter
   const wraps = [...document.querySelectorAll(".rig-wrap")];
   const built = new Set();
-  const idle = (fn) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 200));
+  const idle = (fn) => ("requestIdleCallback" in window ? requestIdleCallback(fn) : setTimeout(fn, 300));
   let queue = Promise.resolve();
   const build = (wrap) => {
     if (built.has(wrap)) return queue;
@@ -1448,23 +1448,18 @@ if (hasWebGL()) {
     const n = +wrap.querySelector(".rig3d").dataset.build;
     return (queue = queue.then(() => buildScene(wrap, C.pcBuilds[n], n)));
   };
-  // Start only after the intro has played (or as soon as the visitor starts scrolling), then build
-  // one scene per idle slot so the page never freezes; getting close to a scene builds it right away
-  let started = false;
-  const start = () => {
-    if (started) return;
-    started = true;
-    removeEventListener("scroll", onScroll);
-    const next = () => {
-      const w = wraps.find((x) => !built.has(x));
-      if (w) build(w).then(() => idle(next));
-    };
-    idle(next);
+  // Build one scene per *idle* moment (never while the visitor is scrolling), starting after the
+  // intro has played; getting close to a scene builds it right away
+  let lastScroll = 0;
+  addEventListener("scroll", () => (lastScroll = performance.now()), { passive: true });
+  const whenIdle = (fn) =>
+    idle(() => (performance.now() - lastScroll < 400 ? setTimeout(() => whenIdle(fn), 250) : fn()));
+  const next = () => {
+    const w = wraps.find((x) => !built.has(x));
+    if (w) build(w).then(() => whenIdle(next));
   };
-  const onScroll = () => scrollY > innerHeight * 0.4 && start();
   document.fonts.ready.then(() => {
-    addEventListener("scroll", onScroll, { passive: true });
-    setTimeout(start, 3500);
+    setTimeout(() => whenIdle(next), 2500);
     const io = new IntersectionObserver((entries) => entries.forEach((e) => e.isIntersecting && build(e.target)), { rootMargin: "100% 0px" });
     wraps.forEach((w) => io.observe(w));
   });
