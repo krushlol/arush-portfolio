@@ -189,7 +189,7 @@
     return { offX: w * (w < 1100 ? 0.2 : 0.2), offY: 20, scale: Math.min(1, w / 1450), settleScale: Math.min(0.92, w / 1500) };
   }
 
-  const heroCopy = $("#hero-copy"), settleCopy = $("#settle-copy"), cue = $("#scroll-cue"), progress = $("#progress"), grid = $("#grid-plane");
+  const heroCopy = $("#hero-copy"), settleCopy = $("#settle-copy"), cue = $("#scroll-cue"), progress = $("#progress");
   let p = reduce ? 1 : 0;
   let t = 0, mx = 0, my = 0, smx = 0, smy = 0;
   let last = performance.now();
@@ -198,10 +198,15 @@
     my = (e.clientY / innerHeight - 0.5) * 2;
   });
 
+  let heroST = null;
   function render() {
     const now = performance.now();
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    const max = document.documentElement.scrollHeight - innerHeight;
+    progress.style.width = `${max > 0 ? (scrollY / max) * 100 : 0}%`;
+    // Nothing in the hero is visible once it has scrolled away: skip all of its per-frame work
+    if (heroST && scrollY > heroST.end + innerHeight) return;
     if (!reduce) t += dt;
     smx += (mx - smx) * 0.06;
     smy += (my - smy) * 0.06;
@@ -229,10 +234,6 @@
     const c = ease(clamp01((p - 0.6) / 0.4));
     settleCopy.style.opacity = c;
     settleCopy.style.translate = `0 ${(1 - c) * 30}px`;
-    grid.style.setProperty("--shift", `${p * 240}px`);
-
-    const max = document.documentElement.scrollHeight - innerHeight;
-    progress.style.width = `${max > 0 ? (scrollY / max) * 100 : 0}%`;
   }
 
   // ---------- Scroll wiring ----------
@@ -246,7 +247,7 @@
   }
 
   if (!reduce) {
-    ScrollTrigger.create({
+    heroST = ScrollTrigger.create({
       trigger: "#scene-wrap",
       start: "top top",
       end: () => "+=" + innerHeight * (isMobile() ? 1.4 : 1.8),

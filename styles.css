@@ -104,7 +104,7 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.2rem); }
 /* ---------- Pinned hero ---------- */
 .scene-wrap { position: relative; height: 100vh; height: 100svh; overflow: hidden; }
 .hero-bg { position: absolute; inset: 0; pointer-events: none; }
-.glow { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.55; animation: drift 18s ease-in-out infinite alternate; }
+.glow { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.55; will-change: transform; animation: drift 18s ease-in-out infinite alternate; }
 .g1 { width: 520px; height: 520px; right: 8%; top: 8%; background: var(--n-purple); opacity: 0.35; }
 .g2 { width: 380px; height: 380px; right: 30%; bottom: 10%; background: var(--n-cyan); opacity: 0.18; animation-delay: -6s; }
 .g3 { width: 300px; height: 300px; left: -80px; top: 30%; background: var(--n-pink); opacity: 0.16; animation-delay: -11s; }
@@ -112,16 +112,20 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.2rem); }
 .grid-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 46%; perspective: 360px; overflow: hidden;
   mask-image: linear-gradient(to top, #000 10%, transparent 95%); -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 95%); }
 .grid-plane {
-  position: absolute; left: -50%; width: 200%; top: 0; height: 200%;
+  position: absolute; left: -50%; width: 200%; top: 0; height: 200%; overflow: hidden;
   transform: rotateX(72deg); transform-origin: top center;
+}
+/* The grid lines live on an inner layer that slides with transform (GPU only, no repaint) */
+.grid-plane::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -64px; bottom: 0;
   background-image:
     linear-gradient(color-mix(in srgb, var(--n-purple) 55%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--n-purple) 55%, transparent) 1px, transparent 1px);
   background-size: 64px 64px;
-  background-position: 0 var(--shift, 0);
+  will-change: transform;
   animation: grid-run 6s linear infinite;
 }
-@keyframes grid-run { to { background-position: 0 calc(var(--shift, 0px) + 64px); } }
+@keyframes grid-run { to { transform: translate3d(0, 64px, 0); } }
 
 .copy {
   position: absolute; left: max(16px, 6vw); top: 50%; transform: translateY(-50%);
@@ -287,7 +291,7 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.2rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scroll-cue span, .play, .drum-title::after { animation: none; }
+  .scroll-cue span, .play, .drum-title::after, .grid-plane::before, .glow { animation: none; }
 }
 
 /* ---------- About ---------- */

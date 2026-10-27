@@ -845,7 +845,6 @@ function buildScene(wrap, build, n) {
   const mobile = innerWidth < 768;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = light ? 0.9 : 1.15;
   renderer.shadowMap.enabled = !mobile;
@@ -1091,8 +1090,9 @@ function buildScene(wrap, build, n) {
   const camera = new THREE.PerspectiveCamera(28, 1, 1, 800);
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  let ao = null;
   if (!mobile) {
-    const ao = new GlassAwareGTAOPass(scene, camera, 512, 512);
+    ao = new GlassAwareGTAOPass(scene, camera, 512, 512);
     ao.updateGtaoMaterial({ radius: 2.4, distanceExponent: 1.2, thickness: 1.4, scale: 1 });
     ao.blendIntensity = 0.85;
     composer.addPass(ao);
@@ -1255,8 +1255,54 @@ function buildScene(wrap, build, n) {
     scr.color.setScalar(0.25 + power * 1.1);
   }
 
+  // ----- adaptive quality -----
+  // Watch real frame times while things are moving and drop the expensive effects on slower
+  // machines (or bring them back on fast ones). Never climbs back to a tier it had to leave.
+  const TIERS = [
+    { dpr: 1, ao: false, dof: false, shadow: 512 },
+    { dpr: 1.25, ao: false, dof: true, shadow: 1024 },
+    { dpr: 1.5, ao: true, dof: true, shadow: 2048 },
+  ];
+  let tier = -1, maxTier = mobile ? 0 : 2, dofOn = false, samples = [], goodWindows = 0, lastTierChange = 0;
+  function setTier(t) {
+    t = Math.max(0, Math.min(maxTier, t));
+    if (t === tier) return;
+    tier = t;
+    const q = TIERS[t];
+    const dpr = Math.min(devicePixelRatio, q.dpr);
+    renderer.setPixelRatio(dpr);
+    composer.setPixelRatio(dpr);
+    composer.setSize(W, H);
+    if (ao) ao.enabled = q.ao;
+    dofOn = q.dof && !!dof;
+    if (key.shadow.mapSize.x !== q.shadow) {
+      key.shadow.mapSize.set(q.shadow, q.shadow);
+      key.shadow.map?.dispose();
+      key.shadow.map = null;
+    }
+    samples = [];
+    goodWindows = 0;
+    lastTierChange = performance.now();
+    needsRender = true;
+  }
+  function sampleFrame(ms) {
+    samples.push(ms);
+    if (samples.length < 45) return;
+    const med = samples.sort((a, b) => a - b)[samples.length >> 1];
+    samples = [];
+    if (med > 24 && tier > 0) {
+      maxTier = tier - 1;
+      setTier(tier - 1);
+    } else if (med < 18 && tier < maxTier && performance.now() - lastTierChange > 4000 && ++goodWindows >= 2) {
+      setTier(tier + 1);
+    }
+  }
+
   // ----- render loop -----
+  // Draws only when something changed (scroll, drag, inertia, resize); once powered on and idle,
+  // the spinning fans and RGB are drawn at 30fps instead of every frame
   let visible = false, raf = 0, last = performance.now(), spin = 0, W = 1, H = 1;
+  let needsRender = true, lastRender = 0, lastRenderP = -1, renderedLastFrame = false;
   // Drag-to-orbit state (with a little inertia after release)
   let yaw = 0, pitch = 0, vYaw = 0, vPitch = 0, dragging = false, lastX = 0, lastY = 0, lastP = 0;
   const allFans = [...fans, ...gpu.userData.fans];
@@ -1284,17 +1330,26 @@ function buildScene(wrap, build, n) {
       }
     }
     pitch = Math.max(-0.6, Math.min(1.1, pitch));
-    placeCamera(p, yaw, pitch);
-    updateCallout(p, W, H);
-    if (dof) {
-      const dist = camera.position.distanceTo(camTarget);
-      const close = clamp01((85 - dist) / 40);
-      dof.enabled = close > 0.02;
-      dof.uniforms.focus.value = dist;
-      dof.uniforms.aperture.value = 0.00045 * close;
+    const moving = scrolling || dragging || p !== lastRenderP || Math.abs(vYaw) + Math.abs(vPitch) > 1e-4;
+    const due = needsRender || moving || (power > 0.01 && now - lastRender >= 33);
+    if (due) {
+      if (moving && renderedLastFrame) sampleFrame(dt * 1000);
+      placeCamera(p, yaw, pitch);
+      updateCallout(p, W, H);
+      if (dof) {
+        const dist = camera.position.distanceTo(camTarget);
+        const close = clamp01((85 - dist) / 40);
+        dof.enabled = dofOn && close > 0.02;
+        dof.uniforms.focus.value = dist;
+        dof.uniforms.aperture.value = 0.00045 * close;
+      }
+      film.uniforms.uTime.value = (now / 1000) % 100;
+      composer.render();
+      lastRender = now;
+      lastRenderP = p;
+      needsRender = false;
     }
-    film.uniforms.uTime.value = (now / 1000) % 100;
-    composer.render();
+    renderedLastFrame = due;
     if (visible && !reduce) raf = requestAnimationFrame(frame);
   }
   const kick = () => {
@@ -1318,6 +1373,7 @@ function buildScene(wrap, build, n) {
     const oy = narrow ? panel.offsetHeight * 0.48 : 0;
     camera.setViewOffset(W, H, ox, oy, W, H);
     camera.updateProjectionMatrix();
+    needsRender = true;
     kick();
   };
   new ResizeObserver(resize).observe(wrap);
@@ -1353,9 +1409,11 @@ function buildScene(wrap, build, n) {
   wrap.addEventListener("pointercancel", endDrag);
   wrap.addEventListener("dblclick", () => {
     yaw = pitch = vYaw = vPitch = 0;
+    needsRender = true;
     kick();
   });
   resize();
+  setTier(mobile ? 0 : 1);
   // Compile every shader in parallel (off the main thread where the browser supports it) so neither
   // the page nor the first visible frame stalls; never wait more than 2.5s for it
   apply(1);
