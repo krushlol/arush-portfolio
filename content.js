@@ -37,7 +37,7 @@ window.CONTENT = {
     {
       name: "Main Rig",
       note: "My personal build: gaming, editing, everything.",
-      accent: "#8b7cf6",
+      accent: "#2bff88",
       // 3D model: "hs420" (dual-chamber, vertical GPU) or "midtower" (classic, horizontal GPU)
       caseModel: "hs420",
       caseColor: "#121216",
