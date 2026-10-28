@@ -55,7 +55,7 @@ window.CONTENT = {
       ],
     },
     {
-      name: "Mom's Build",
+      name: "2nd Build",
       note: "Built this one for my mom.",
       accent: "#ef5a4c",
       caseModel: "midtower",

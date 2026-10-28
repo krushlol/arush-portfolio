@@ -1437,7 +1437,8 @@ function buildScene(wrap, build, n) {
     last = now;
     const p = reduce ? 1 : window.PC_PROGRESS?.[n] ?? 0;
     apply(p);
-    spin += dt * power * 24;
+    // Kept well under one blade gap per 30fps frame, or the blades strobe and look frozen
+    spin += dt * power * 7;
     allFans.forEach((f, i) => (f.userData.rotor.rotation.z = spin * (i % 2 ? 1 : 1.06)));
     diffuserTex.offset.y += dt * power * 0.25;
     const scrolling = Math.abs(p - lastP) > 0.0002;
