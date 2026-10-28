@@ -234,6 +234,20 @@ const qcodeTex = () =>
     g.fillText("A0", w / 2, h / 2 + 4);
   });
 
+// Rows of rounded slots, like HAVN's vented steel panels
+const slotTex = (rep = [1, 1]) =>
+  bumpy(canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = "#1a1a1f";
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = "#020203";
+    for (let y = 8; y < h; y += 16)
+      for (let x = (y / 16) % 2 ? -24 : 0; x < w; x += 64) {
+        g.beginPath();
+        g.roundRect(x + 4, y, 52, 8, 4);
+        g.fill();
+      }
+  }, rep), 1.6);
+
 const meshTex = (light) =>
   bumpy(canvasTex(128, 128, (g, w, h) => {
     g.fillStyle = light ? "#dcdce2" : "#18181d";
@@ -726,8 +740,131 @@ function makePump(M, accent) {
 
 // ---------- case shells ----------
 function makeCase(M, kind, light) {
+  return kind === "hs420" ? makeHS420(M, light) : makeMidtower(M, light);
+}
+
+// HAVN HS 420 VGPU, modelled from HAVN's spec sheet and product shots: 541 (D) x 259.5 (W) x 547 (H) mm,
+// thick top slab and slotted base, rear pillars only, one heat-formed glass sheet curving around the
+// front corner, 140mm fans throughout, 420mm top radiator, storage column and a glass GPU air guide
+function makeHS420(M, light) {
   const g = new THREE.Group();
-  const dims = kind === "hs420" ? { x: 22, y: 46, z: 14, tray: -6 } : { x: 21, y: 47, z: 11, tray: -9 };
+  const X = 27.05, Y = 54.7, Z = 12.97, tray = -4.5;
+  const topH = 3.2, baseH = 4.4, pill = 2.4, R = 3.2;
+  const innerH = Y - topH - baseH, midY = baseH + innerH / 2;
+  const radY = Y - topH - 1.45;
+  const dims = { x: X, y: Y, z: Z, tray, boardTop: radY - 1.4 - 2.8 - 1.2, boardX: -X + pill + 0.8 + 12.2, gpuX: -X + pill + 16.5, bracketX: -X + pill + 0.8 };
+
+  // Top slab and base: thick rounded extrusions running front to back, base with a long slot
+  box(2 * X + 0.6, topH, 2 * Z + 0.4, M.frame, 0.3, Y - topH / 2, 0, g, 1.0);
+  box(2 * X + 0.6, baseH, 2 * Z + 0.4, M.frame, 0.3, baseH / 2, 0, g, 1.0);
+  [1, -1].forEach((sz) => box(2 * X - 12, 1.3, 0.3, M.plastic, -1, baseH * 0.48, sz * (Z + 0.12), g, 0.6));
+  mesh(new THREE.TorusGeometry(1.6, 0.35, 16, 32, Math.PI), M.frame, g).position.set(-X + 4, Y, -Z + 3);
+  plane(4.2, 0.9, new THREE.MeshStandardMaterial({ map: textTex(["HAVN"], { w: 512, h: 112, size: 72, fg: "#bdbdc6" }), transparent: true }), -X + 6, Y - topH / 2, Z + 0.21, g);
+  // Feet
+  [[-X + 3, -Z + 3], [X - 3, -Z + 3], [-X + 3, Z - 3], [X - 3, Z - 3]].forEach(([x, z]) => mesh(new THREE.CylinderGeometry(1.2, 1.4, 0.7, 32), M.plastic, g).position.set(x, -0.35, z));
+
+  // Rear pillars (front corner is curved glass, no pillar there) + hidden back-front pillar
+  [-Z + pill / 2, Z - pill / 2].forEach((z) => box(pill, innerH, pill, M.frame, -X + pill / 2, midY, z, g, 0.3));
+  box(pill, innerH, pill, M.frame, X - pill / 2, midY, -Z + pill / 2, g, 0.3);
+
+  // Back panel behind the tray: fully slotted, vented steel
+  box(2 * X - 2 * pill, innerH, 0.3, new THREE.MeshStandardMaterial({ map: slotTex([3, 4]), metalness: 0.5, roughness: 0.55 }), 0, midY, -Z + 0.2, g);
+  // Motherboard tray, slotted cable pass-throughs, and the storage-bay column toward the front
+  box(2 * X - 2 * pill, innerH, 0.3, M.frameDark, 0, midY, tray, g);
+  const slotStrip = new THREE.MeshStandardMaterial({ map: slotTex([0.4, 2]), metalness: 0.4, roughness: 0.6 });
+  [36, 21].forEach((y) => box(2.2, 12.5, 0.35, slotStrip, 3.6, y, tray + 0.25, g, 0.25));
+  const bayLabel = new THREE.MeshStandardMaterial({ map: textTex(["STORAGE"], { w: 256, h: 48, size: 26, fg: "#8a8a94" }), transparent: true });
+  for (let i = 0; i < 4; i++) {
+    const y = Y - topH - 1.2 - 5.0 - i * 10.4;
+    box(15, 9.8, 0.7, M.frame, 14.2, y, tray + 0.4, g, 0.3);
+    plane(3.2, 0.6, bayLabel, 19.4, y - 4, tray + 0.76, g);
+  }
+
+  // Rear wall: two 140mm fan openings with vertical slats (top exhaust, bottom intake) + slot covers
+  box(0.3, innerH, 2 * Z - 2 * pill, M.frameDark, -X + 0.5, midY, 0, g);
+  const cz = (tray + Z) / 2;
+  const fans = [], groups = { rear: [], bottom: [], front: [], rad: [] };
+  [Y - topH - 8.6, baseH + 8.6].forEach((cy) => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(6.5, 0.25, 8, 48), M.frame);
+    ring.rotation.y = Math.PI / 2;
+    ring.position.set(-X + 0.7, cy, cz);
+    g.add(ring);
+    for (let k = -5; k <= 5; k++) {
+      const zz = k * 1.15, hh = 2 * Math.sqrt(Math.max(0, 6.4 * 6.4 - zz * zz));
+      if (hh > 0.5) box(0.25, hh, 0.45, M.frame, -X + 0.7, cy, cz + zz, g);
+    }
+    const f = makeFan(14, M);
+    f.rotation.y = -Math.PI / 2;
+    f.position.set(-X + 2.3, cy, cz);
+    g.add(f);
+    fans.push(f);
+    groups.rear.push(f);
+  });
+  for (let i = 0; i < 6; i++) box(0.2, 1.4, 6.5, M.frame, -X + 0.85, 33 - i * 2.03, cz, g);
+
+  // Bottom: dust filter, three tilted 140mm intakes, and the glass air guide that aims them at the GPU
+  const filter = plane(2 * X - 4, 2 * Z - 4, new THREE.MeshStandardMaterial({ map: meshTex(light), metalness: 0.3, roughness: 0.6 }), 0, baseH + 0.02, 0, g);
+  filter.rotation.x = -Math.PI / 2;
+  filter.material.map.repeat.set(26, 12);
+  [-16, 0, 16].forEach((x) => {
+    const f = makeFan(14, M);
+    f.rotation.x = -Math.PI / 2 + 0.22;
+    f.position.set(x, baseH + 2.4, cz + 0.6);
+    g.add(f);
+    fans.push(f);
+    groups.bottom.push(f);
+  });
+  const guide = box(2 * X - 9, 0.25, 9.5, M.glassShelf, 1, baseH + 6.6, cz + 2.2, g);
+  guide.rotation.x = 0.12;
+
+  // One heat-formed glass sheet: side panel, small-radius curved corner, front panel (slides off as one)
+  const side = new THREE.Group();
+  side.position.z = Z - 0.18;
+  const sideW = 2 * X - pill - R;
+  box(sideW, innerH, 0.35, M.glass, -X + pill + sideW / 2, midY, 0, side).castShadow = false;
+  const curveMat = M.glass.clone();
+  curveMat.side = THREE.DoubleSide;
+  const curve = new THREE.Mesh(new THREE.CylinderGeometry(R, R, innerH, 24, 1, true, 0, Math.PI / 2), curveMat);
+  curve.position.set(X - R, midY, -R + 0.18);
+  side.add(curve);
+  const frontW = 2 * Z - R - pill;
+  box(0.35, innerH, frontW, M.glass, X - 0.18, midY, -Z + pill + frontW / 2 - (Z - 0.18), side).castShadow = false;
+  // Black screen-printed borders along the top and bottom of the sheet and its rear edge
+  [midY + innerH / 2 - 0.5, midY - innerH / 2 + 0.5].forEach((y) => {
+    box(sideW, 1.0, 0.37, M.frit, -X + pill + sideW / 2, y, 0, side);
+    box(0.37, 1.0, frontW, M.frit, X - 0.18, y, -Z + pill + frontW / 2 - (Z - 0.18), side);
+    const fc = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.01, R + 0.01, 1.0, 24, 1, true, 0, Math.PI / 2), M.frit.clone());
+    fc.material.side = THREE.DoubleSide;
+    fc.position.set(X - R, y, -R + 0.18);
+    side.add(fc);
+  });
+  box(1.0, innerH, 0.37, M.frit, -X + pill + 0.5, midY, 0, side);
+  g.add(side);
+
+  // 420mm AIO radiator under the top slab: fins, end tanks, label, three 140mm fans
+  const rad = new THREE.Group();
+  box(41.5, 2.7, 14.4, new THREE.MeshStandardMaterial({ map: finTex([14, 1]), metalness: 0.6, roughness: 0.4 }), 0, 0, 0, rad);
+  box(2.6, 3.0, 14.8, M.gunmetal, -22.1, 0, 0, rad, 0.3);
+  box(2.6, 3.0, 14.8, M.gunmetal, 22.1, 0, 0, rad, 0.3);
+  plane(2.2, 1.0, new THREE.MeshStandardMaterial({ map: textTex(["420"], { w: 256, h: 112, size: 70, fg: "#c9c9d2" }), transparent: true }), 22.1, 0, 7.42, rad);
+  rad.position.set(-0.6, radY, cz + 0.4);
+  g.add(rad);
+  [-14.2, 0, 14.2].forEach((x) => {
+    const f = makeFan(14, M);
+    f.rotation.x = Math.PI / 2;
+    f.position.set(x - 0.6, radY - 1.35 - 1.5, rad.position.z);
+    g.add(f);
+    fans.push(f);
+    groups.rad.push(f);
+  });
+
+  g.userData = { dims, side, fans, groups, radY, radZ: rad.position.z, radPort: V(20.8, radY - 1.6, rad.position.z + 5.2) };
+  return g;
+}
+
+function makeMidtower(M, light) {
+  const g = new THREE.Group();
+  const dims = { x: 21, y: 47, z: 11, tray: -9 };
   const { x: X, y: Y, z: Z } = dims;
   const t = 1.4;
   [-X + t / 2, X - t / 2].forEach((x) => [-Z + t / 2, Z - t / 2].forEach((z) => box(t, Y, t, M.frame, x, Y / 2, z, g, 0.3)));
@@ -768,24 +905,7 @@ function makeCase(M, kind, light) {
 
   const fans = [rear];
   const groups = { rear: [rear], bottom: [], front: [], rad: [] };
-  if (kind === "hs420") {
-    // HAVN signature handle, three angled floor intakes under a glass shelf
-    mesh(new THREE.TorusGeometry(1.6, 0.35, 16, 32, Math.PI), M.frame, g).position.set(-X + 4, Y, -Z + 3);
-    [-13, 0, 13].forEach((x) => {
-      const f = makeFan(12, M);
-      f.rotation.x = -Math.PI / 2 + 0.28;
-      f.position.set(x, 3.2, 4.5);
-      g.add(f);
-      fans.push(f);
-      groups.bottom.push(f);
-    });
-    // Magnetic dust filter on the floor under the intakes
-    const filter = plane(2 * X - 4, 2 * Z - 4, new THREE.MeshStandardMaterial({ map: meshTex(light), metalness: 0.3, roughness: 0.6 }), 0, t + 0.02, 0, g);
-    filter.rotation.x = -Math.PI / 2;
-    filter.material.map.repeat.set(22, 14);
-    box(2 * X - 2 * t, 0.2, 10, M.glassShelf, 0, 6.1, 9, g);
-    plane(5, 1.1, new THREE.MeshStandardMaterial({ map: textTex(["HAVN"], { w: 512, h: 112, size: 72, fg: "#cfcfd6" }), transparent: true }), 0, t / 2, Z + 0.01, g);
-  } else {
+  {
     // PSU shroud with vents, three front intakes
     const sw = 2 * X - 2 * t - 3.5, sd = 2 * Z - 2 * t + 0.6 - (dims.tray + Z);
     const shroud = box(sw, 9.5, sd, M.frame, -1.75, t + 4.75, (dims.tray + Z) / 2 + 0.1, g, 0.3);
@@ -830,6 +950,7 @@ function makeCase(M, kind, light) {
     groups.rad.push(f);
   });
 
+  Object.assign(dims, { boardTop: Y - t * 1.3 - 6.4, boardX: -X + 1.6 + 12.2 });
   g.userData = { dims, side, fans, groups, radY, radZ: rad.position.z, radPort: V(17.6, radY - 1.6, rad.position.z + 4.2) };
   return g;
 }
@@ -912,8 +1033,7 @@ function buildScene(wrap, build, n) {
 
   // Motherboard: rear I/O flush to the rear wall, top just under the radiator
   const mb = makeMotherboard(M, build.caseModel === "hs420" ? "Z790 AORUS" : "Z890 TUF");
-  const boardTop = dims.y - 1.4 * 1.3 - 6.4;
-  mb.position.set(-dims.x + 1.6 + 12.2, boardTop - 15.25, dims.tray + 0.2);
+  mb.position.set(dims.boardX, dims.boardTop - 15.25, dims.tray + 0.2);
   root.add(mb);
   const B = mb.position, bz = B.z + mb.userData.Z;
   const sock = V(B.x - 3, B.y + 6.5, bz);
@@ -998,10 +1118,10 @@ function buildScene(wrap, build, n) {
   root.add(gpu);
   let gpuTo;
   if (build.caseModel === "hs420") {
-    gpuTo = { p: V(-2.5, B.y - 9.5, dims.tray + 4.5), r: new THREE.Euler() };
-    box(1.2, 14, 6, M.frame, -18.6, B.y - 9.5, dims.tray + 3.5, root, 0.2); // vertical GPU bracket
+    gpuTo = { p: V(dims.gpuX, B.y - 9.5, dims.tray + 4.5), r: new THREE.Euler() };
+    box(1.2, 14, 6, M.frame, dims.bracketX, B.y - 9.5, dims.tray + 3.5, root, 0.2); // vertical GPU bracket
     // PCIe riser ribbon from the x16 slot down behind the card
-    const riser = new THREE.CatmullRomCurve3([V(B.x + 2, B.y - 4.3, bz + 1.1), V(B.x + 2, B.y - 6, bz + 2.5), V(-8, B.y - 15.5, dims.tray + 2.8)]);
+    const riser = new THREE.CatmullRomCurve3([V(B.x + 2, B.y - 4.3, bz + 1.1), V(B.x + 2, B.y - 6, bz + 2.5), V(dims.gpuX - 5.5, B.y - 15.5, dims.tray + 2.8)]);
     mesh(new THREE.TubeGeometry(riser, 24, 0.5, 4), M.plastic, root).scale.z = 0.4;
   } else {
     gpuTo = { p: V(B.x + 1.2, B.y - 4.3 - 0.6, bz + 1.1 + 6), r: new THREE.Euler(Math.PI / 2, 0, 0) };
@@ -1108,13 +1228,14 @@ function buildScene(wrap, build, n) {
 
   // Camera shots: [progress, target, direction, distance]
   const center = V(0, dims.y / 2, 0);
+  const ov = Math.max(1, dims.y / 46); // pull the wide shots back for bigger cases
   const D = (x, y, z) => V(x, y, z).normalize();
   const ramC = V(B.x + 4.8, B.y + 6.5, bz);
   const ssdC = ssdAt.clone().add(V(4, 0, 0));
   const gpuC = gpuTo.p.clone().add(build.caseModel === "hs420" ? V(0, 0, 2) : V(0, -2.5, 3));
   const shots = [
-    [0.0, center, D(0.55, 0.3, 1), 135],
-    [0.08, center, D(0.35, 0.28, 1), 118],
+    [0.0, center, D(0.55, 0.3, 1), 135 * ov],
+    [0.08, center, D(0.35, 0.28, 1), 118 * ov],
     [0.13, sock, D(0.3, 0.35, 1), 48],
     [0.23, sock, D(0.15, 0.3, 1), 52],
     [0.29, ramC, D(-0.35, 0.3, 1), 50],
@@ -1123,8 +1244,8 @@ function buildScene(wrap, build, n) {
     [0.56, ssdC, D(0.05, 0.4, 1), 40],
     [0.61, gpuC, D(0.4, 0.2, 1), 74],
     [0.76, gpuC, D(0.25, 0.25, 1), 76],
-    [0.86, center, D(0.45, 0.22, 1), 124],
-    [1.0, center, D(0.85, 0.18, 1), 116],
+    [0.86, center, D(0.45, 0.22, 1), 124 * ov],
+    [1.0, center, D(0.85, 0.18, 1), 116 * ov],
   ];
   const camTarget = V(), tmpDir = V();
   let distScale = 1;
