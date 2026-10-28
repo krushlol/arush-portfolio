@@ -769,21 +769,24 @@ function makeHS420(M, light) {
 
   // Back panel behind the tray: fully slotted, vented steel
   box(2 * X - 2 * pill, innerH, 0.3, new THREE.MeshStandardMaterial({ map: slotTex([3, 4]), metalness: 0.5, roughness: 0.55 }), 0, midY, -Z + 0.2, g);
-  // Motherboard tray, slotted cable pass-throughs, and the storage-bay column toward the front
+  // Motherboard tray and slotted cable pass-throughs
   box(2 * X - 2 * pill, innerH, 0.3, M.frameDark, 0, midY, tray, g);
   const slotStrip = new THREE.MeshStandardMaterial({ map: slotTex([0.4, 2]), metalness: 0.4, roughness: 0.6 });
   [36, 21].forEach((y) => box(2.2, 12.5, 0.35, slotStrip, 3.6, y, tray + 0.25, g, 0.25));
-  const bayLabel = new THREE.MeshStandardMaterial({ map: textTex(["STORAGE"], { w: 256, h: 48, size: 26, fg: "#8a8a94" }), transparent: true });
-  for (let i = 0; i < 4; i++) {
-    const y = Y - topH - 1.2 - 5.0 - i * 10.4;
-    box(15, 9.8, 0.7, M.frame, 14.2, y, tray + 0.4, g, 0.3);
-    plane(3.2, 0.6, bayLabel, 19.4, y - 4, tray + 0.76, g);
-  }
+
+  const cz = (tray + Z) / 2;
+  const fans = [], groups = { rear: [], bottom: [], front: [], rad: [] };
+  // Tray-side fan column toward the front: three fans stacked on a mounting rail, blowing out through the glass
+  box(13.6, 38, 0.4, M.frameDark, 14.2, 28, tray + 0.35, g, 0.3);
+  [40, 27.6, 15.2].forEach((y) => {
+    const f = makeFan(12, M);
+    f.position.set(14.2, y, tray + 1.9);
+    g.add(f);
+    fans.push(f);
+  });
 
   // Rear wall: two 140mm fan openings with vertical slats (top exhaust, bottom intake) + slot covers
   box(0.3, innerH, 2 * Z - 2 * pill, M.frameDark, -X + 0.5, midY, 0, g);
-  const cz = (tray + Z) / 2;
-  const fans = [], groups = { rear: [], bottom: [], front: [], rad: [] };
   [Y - topH - 8.6, baseH + 8.6].forEach((cy) => {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(6.5, 0.25, 8, 48), M.frame);
     ring.rotation.y = Math.PI / 2;
@@ -808,13 +811,13 @@ function makeHS420(M, light) {
   filter.material.map.repeat.set(26, 12);
   [-16, 0, 16].forEach((x) => {
     const f = makeFan(14, M);
-    f.rotation.x = -Math.PI / 2 + 0.22;
-    f.position.set(x, baseH + 2.4, cz + 0.6);
+    f.rotation.x = -Math.PI / 2 + 0.5;
+    f.position.set(x, baseH + 3.4, cz + 0.6);
     g.add(f);
     fans.push(f);
     groups.bottom.push(f);
   });
-  const guide = box(2 * X - 9, 0.25, 9.5, M.glassShelf, 1, baseH + 6.6, cz + 2.2, g);
+  const guide = box(2 * X - 9, 0.25, 9.5, M.glassShelf, 1, baseH + 8.6, cz + 2.2, g);
   guide.rotation.x = 0.12;
 
   // One heat-formed glass sheet: side panel, small-radius curved corner, front panel (slides off as one)
