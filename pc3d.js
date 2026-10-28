@@ -1220,7 +1220,7 @@ function buildScene(wrap, build, n) {
     ao.blendIntensity = 0.85;
     composer.addPass(ao);
   }
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.45, 0.4, light ? 1.6 : 1.05);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.35, light ? 1.7 : 1.25);
   // Shallow depth of field on the close-ups, like a macro lens
   const dof = mobile ? null : new BokehPass(scene, camera, { focus: 100, aperture: 0, maxblur: 0.006 });
   if (dof) composer.addPass(dof);
@@ -1361,15 +1361,15 @@ function buildScene(wrap, build, n) {
 
     // Power on
     power = easeInOut(seg(p, T.power));
-    M.glow.emissiveIntensity = power * 3.2;
-    M.glowBar.emissiveIntensity = power * 2.4;
-    M.diffuser.emissiveIntensity = power * 2.2;
-    M.fanBlade.emissiveIntensity = power * 0.18;
+    M.glow.emissiveIntensity = power * 1.6;
+    M.glowBar.emissiveIntensity = power * 1.3;
+    M.diffuser.emissiveIntensity = power * 1.2;
+    M.fanBlade.emissiveIntensity = power * 0.06;
     M.led.emissiveIntensity = power * 2;
     mb.userData.qcode.emissiveIntensity = power * 2.2;
     gpu.userData.logo.material.emissiveIntensity = power * 0.9;
-    inner.forEach((l) => (l.intensity = power * (light ? 35 : 70)));
-    kicker.intensity = power * (light ? 400 : 1400);
+    inner.forEach((l) => (l.intensity = power * (light ? 14 : 26)));
+    kicker.intensity = power * (light ? 140 : 380);
     const scr = pump.userData.screen.material;
     const want = power > 0.4 ? pump.userData.on : pump.userData.off;
     if (scr.map !== want) {
