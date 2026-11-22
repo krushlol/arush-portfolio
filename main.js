@@ -83,6 +83,18 @@
       <ul class="kit">${d.kit.map((k, i) => `<li>${esc(k)}<span>0${i + 1}</span></li>`).join("")}</ul>
     </div>`;
 
+  const a = C.art;
+  $("#art-layout").innerHTML = `
+    <figure class="glass-card art-frame" data-reveal>
+      <img src="${esc(a.image)}" alt="${esc(a.title)}: two framed preserved-moss landscapes" loading="lazy" decoding="async" />
+    </figure>
+    <div class="drum-info" data-reveal>
+      <p class="course-org">${esc(a.medium)}</p>
+      <h3 class="art-title">${esc(a.title)}</h3>
+      <p>${esc(a.desc)}</p>
+      <ul class="kit">${a.process.map((k, i) => `<li>${esc(k)}<span>0${i + 1}</span></li>`).join("")}</ul>
+    </div>`;
+
   $("#contact-email").textContent = C.email;
   $("#contact-email").href = `mailto:${C.email}`;
   $("#socials").innerHTML = C.socials.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ↗</a>`).join("");

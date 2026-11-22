@@ -264,6 +264,12 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.2rem); }
 .kit li { padding: 14px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 14px; }
 .kit li span { color: var(--muted); font-size: 11px; letter-spacing: 0.14em; }
 
+.art-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; align-items: center; }
+.art-frame { padding: 10px; margin: 0; }
+.art-frame img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; }
+.art-layout .course-org { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--n-green); margin: 0 0 8px; }
+.art-title { font-family: var(--display); font-weight: 500; font-size: 26px; text-transform: uppercase; letter-spacing: -0.01em; margin-bottom: 14px; }
+
 .contact { padding-bottom: 120px; }
 .contact-email { display: inline-block; margin-top: 40px; font-family: var(--display); font-size: clamp(1.4rem, 3vw, 2.4rem); border-bottom: 2px solid var(--accent); }
 .socials { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 32px; }
@@ -273,7 +279,7 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.2rem); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
-  .web-item, .drum-layout { grid-template-columns: 1fr; gap: 24px; }
+  .web-item, .drum-layout, .art-layout { grid-template-columns: 1fr; gap: 24px; }
   .web-item:nth-child(even) .browser { order: 0; }
 }
 @media (max-width: 767px) {

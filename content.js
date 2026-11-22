@@ -115,4 +115,12 @@ window.CONTENT = {
     kit: ["Mapex Venus drum kit", "Red finish, chrome hardware"],
     cardTitles: ["Beggin' Cover", "Mapex Venus"],
   },
+
+  art: {
+    title: "Living Landscapes",
+    medium: "Preserved moss & resin · handmade frames",
+    image: "assets/moss-art.jpg",
+    desc: "A pair of preserved-moss landscapes seen from above: a forest canopy, and a lake with an island at its center. The project took two years, from planning, sketching and sourcing the moss to cutting and shaping every piece by hand. I built both frames myself.",
+    process: ["Planning & sketching", "Sourcing the moss", "Cutting & shaping", "Resin water", "Handmade frames"],
+  },
 };
