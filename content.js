@@ -87,22 +87,22 @@ window.CONTENT = {
 
   courses: [
     {
-      title: "embARC",
-      org: "UC Berkeley",
-      desc: "An architectural engineering course at Berkeley, where I studied how buildings are designed and engineered, from first concept to structure.",
-      tags: ["Architecture", "Engineering"],
+      title: "embARC: Architectural Engineering",
+      org: "UC Berkeley · Summer",
+      desc: "Berkeley's pre-college architecture program. I worked through the full design process, from site analysis and concept sketches to models and the structural thinking that makes a building stand, and learned to defend design decisions in critiques.",
+      tags: ["Architecture", "Structures", "Design process"],
     },
     {
-      title: "Electrical Engineering",
-      org: "Johns Hopkins",
-      desc: "A Johns Hopkins electrical engineering course focused on energy sustainability and how cleaner energy systems are designed.",
-      tags: ["Electrical Engineering", "Sustainability"],
+      title: "Electrical Engineering & Sustainable Energy",
+      org: "Johns Hopkins · Summer",
+      desc: "An engineering course at Johns Hopkins on how electricity is generated, stored and delivered, and how renewable systems like solar and wind can be designed to make the grid cleaner and more efficient.",
+      tags: ["Electrical Engineering", "Renewable energy", "Circuits"],
     },
     {
-      title: "Design",
-      org: "California College of the Arts, SF",
-      desc: "A design course at CCA in San Francisco, built around visual thinking and making ideas look and work right.",
-      tags: ["Design"],
+      title: "Design Studio",
+      org: "California College of the Arts · SF · Summer",
+      desc: "A studio course at one of the West Coast's leading art and design schools. I learned to think visually: composition, form and iteration, turning rough ideas into work that is clear, intentional and built around the person using it.",
+      tags: ["Visual design", "Composition", "Iteration"],
     },
   ],
 
