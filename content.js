@@ -89,20 +89,20 @@ window.CONTENT = {
     {
       title: "embARC: Architectural Engineering",
       org: "UC Berkeley · Summer",
-      desc: "Berkeley's pre-college architecture program. I worked through the full design process, from site analysis and concept sketches to models and the structural thinking that makes a building stand, and learned to defend design decisions in critiques.",
-      tags: ["Architecture", "Structures", "Design process"],
+      desc: "I took a building from an empty site to a finished concept: analyzing light, circulation and context, translating sketches into physical models, and reasoning through how loads move through a structure. Presenting to architects in critiques taught me to defend every decision with a reason, not a preference.",
+      tags: ["Architecture", "Structural reasoning", "Model making"],
     },
     {
       title: "Electrical Engineering & Sustainable Energy",
       org: "Johns Hopkins · Summer",
-      desc: "An engineering course at Johns Hopkins on how electricity is generated, stored and delivered, and how renewable systems like solar and wind can be designed to make the grid cleaner and more efficient.",
-      tags: ["Electrical Engineering", "Renewable energy", "Circuits"],
+      desc: "I studied energy as a systems problem: how power is generated, stored and moved across a grid, and where efficiency is lost along the way. I applied circuit fundamentals to renewable sources like solar and wind and weighed the tradeoffs engineers face in making clean energy reliable at scale.",
+      tags: ["Electrical Engineering", "Energy systems", "Sustainability"],
     },
     {
       title: "Design Studio",
       org: "California College of the Arts · SF · Summer",
-      desc: "A studio course at one of the West Coast's leading art and design schools. I learned to think visually: composition, form and iteration, turning rough ideas into work that is clear, intentional and built around the person using it.",
-      tags: ["Visual design", "Composition", "Iteration"],
+      desc: "In a fast-paced studio at one of the West Coast's top design schools, I learned to treat design as problem-solving. I moved from rough sketches through rounds of critique and revision to finished work where every choice of form, composition and hierarchy had a purpose. It's the same discipline I now bring to the interfaces I build.",
+      tags: ["Visual design", "Iteration", "Design thinking"],
     },
   ],
 
