@@ -251,6 +251,15 @@
   // ---------- Scroll wiring ----------
   gsap.registerPlugin(ScrollTrigger);
 
+  // Inertial smooth scrolling for mouse wheels and trackpads, driven by GSAP's ticker so the
+  // scrubbed animations and the 3D builds move in the same frame as the page (touch stays native)
+  const lenis = !reduce && window.Lenis ? new Lenis({ lerp: 0.085, wheelMultiplier: 0.9 }) : null;
+  if (lenis) {
+    lenis.on("scroll", ScrollTrigger.update);
+    gsap.ticker.add((t) => lenis.raf(t * 1000));
+    gsap.ticker.lagSmoothing(0);
+  }
+
   if (!reduce) {
     heroST = ScrollTrigger.create({
       trigger: "#scene-wrap",
@@ -315,7 +324,7 @@
   const load3d = () => import("./pc3d.js");
   addEventListener("load", () => ("requestIdleCallback" in window ? requestIdleCallback(load3d, { timeout: 2500 }) : setTimeout(load3d, 1200)));
 
-  // Anchor links scroll smoothly with the browser's native scrolling
+  // Anchor links glide with the same smooth scroll
   document.addEventListener("click", (e) => {
     const a = e.target.closest('a[href^="#"]');
     if (!a) return;
@@ -323,7 +332,8 @@
     const target = id === "#top" ? 0 : $(id);
     if (target === null) return;
     e.preventDefault();
-    const behavior = reduce ? "auto" : "smooth";
-    scrollTo({ top: target === 0 ? 0 : target.getBoundingClientRect().top + scrollY - 40, behavior });
+    const top = target === 0 ? 0 : target.getBoundingClientRect().top + scrollY - 40;
+    if (lenis) lenis.scrollTo(top, { duration: 1.4 });
+    else scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
   });
 })();

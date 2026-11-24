@@ -392,3 +392,9 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.2rem); }
   .callout span { font-size: 11px; padding: 6px 9px; }
   .callout b { width: 24px; }
 }
+
+/* Lenis smooth scroll */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
