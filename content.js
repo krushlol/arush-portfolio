@@ -7,25 +7,26 @@ window.CONTENT = {
 
   heroTag: "Senior @ Irvington HS · Fremont, CA",
   heroName: ["Arush", "Chirputkar"],
-  roles: ["PCs", "websites", "beats"],
-  intro: "I build things from scratch: gaming rigs, real websites and drum grooves. Scroll and watch it all lock into place.",
+  roles: ["PCs", "web apps", "art", "beats"],
+  intro: "I take systems apart until I understand them, then engineer my own, from hand-built PCs to a full-stack AI web platform. Scroll and watch it come together.",
   heroStats: [
     { v: "2", k: "PCs built" },
-    { v: "1", k: "site live" },
-    { v: "17", k: "years old" },
+    { v: "1", k: "platform shipped" },
+    { v: "3", k: "university courses" },
   ],
 
-  settleLines: ["Built, shipped,", "played."],
-  settleIntro: "Two custom PCs, a live web platform and a drum cover. Choose one to see how it came together.",
+  settleLines: ["Engineered,", "shipped, crafted."],
+  settleIntro: "Two custom PCs, a live AI-powered platform, a two-year art piece and a drum cover. Pick one to see how it was made.",
 
   about: {
-    bio: "I'm Arush, a senior at Irvington High in Fremont, and I learn by building. I like to take a system apart until I understand it, then make something of my own. That curiosity has led me to hand-build two PCs, one for my mom, and to design and ship CarAdvisor, a full-stack car research platform with an AI assistant that I've refined across 172 commits. When I'm not at a keyboard, I'm behind a drum kit or on the court playing basketball, ping pong or tennis.",
+    bio: "I'm Arush, a senior at Irvington High in Fremont, and I learn by building. I take systems apart until I understand how they work, then engineer something of my own. That approach led me to hand-build two PCs and to design and ship CarAdvisor, a full-stack car research platform with an AI assistant that I've refined across 172 commits. I've studied architectural engineering at UC Berkeley, sustainable energy at Johns Hopkins and design at CCA, and I spent two years planning and crafting a pair of moss landscapes, frames included. Away from the screen, I play drums, basketball, ping pong and tennis.",
     facts: [
       { k: "Age", v: "17" },
       { k: "School", v: "Irvington High · Class of 2027" },
       { k: "Based in", v: "Fremont, CA" },
       { k: "Shipped", v: "CarAdvisor · Next.js, TypeScript, AI" },
-      { k: "Built", v: "2 custom PCs" },
+      { k: "Studied at", v: "UC Berkeley · Johns Hopkins · CCA" },
+      { k: "Built", v: "2 custom PCs · moss art" },
       { k: "Plays", v: "Drums · Basketball · Ping pong · Tennis" },
     ],
     sports: ["Basketball", "Ping pong", "Tennis"],
@@ -36,7 +37,7 @@ window.CONTENT = {
   pcBuilds: [
     {
       name: "Main Rig",
-      note: "My personal build: gaming, editing, everything.",
+      note: "My daily driver for gaming and editing, planned around airflow: a vertical GPU fed by bottom intakes, with a 420mm radiator exhausting up top.",
       accent: "#2bff88",
       // 3D model: "hs420" (dual-chamber, vertical GPU) or "midtower" (classic, horizontal GPU)
       caseModel: "hs420",
@@ -56,7 +57,7 @@ window.CONTENT = {
     },
     {
       name: "2nd Build",
-      note: "Built this one for my mom.",
+      note: "A second build I specced and assembled for family, balancing performance against budget.",
       accent: "#ef5a4c",
       caseModel: "midtower",
       caseColor: "#e6e6ea",
@@ -78,7 +79,7 @@ window.CONTENT = {
   webDesign: [
     {
       title: "CarAdvisor",
-      role: "Designed & built: research, compare and find your next car",
+      role: "Designed and engineered end to end: a full-stack platform to research and compare cars, with an AI assistant that answers buyers' questions.",
       tools: ["Next.js", "TypeScript", "Supabase", "Prisma", "Tailwind", "Groq AI"],
       link: "https://caradvisorusa.com",
       image: "assets/caradvisor.jpg",
